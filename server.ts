@@ -196,6 +196,7 @@ import { BotRole, BotMinistry, BotStatus } from "./src/types.js";
 import { RealWorldGateway } from "./server/RealWorldGateway.js";
 import { AutomationManager } from "./server/AutomationManager.js";
 import { PolygonValidator } from "./server/PolygonValidator.js";
+import { ExternalApiMarket } from "./server/ExternalApiMarket.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1604,6 +1605,98 @@ const activeSubscriptions: ApiSubscription[] = [];
 // Get list of external subscriptions
 app.get("/api/export/subscriptions", (req, res) => {
   res.json({ success: true, subscriptions: activeSubscriptions });
+});
+
+// v13.7: PREMIUM SUBSCRIBER API - GERÇEK USDT ÖDEYENLER İÇİN
+app.post("/api/subscribe-premium", express.json(), async (req, res) => {
+  const { email, tier, transactionHash, walletAddress } = req.body;
+
+  if (!email || !tier || !transactionHash || !walletAddress) {
+    return res.status(400).json({
+      success: false,
+      error: "Gerekli: email, tier (basic/pro/enterprise), transactionHash, walletAddress"
+    });
+  }
+
+  // Tier fiyatları (USDT cinsinden gerçek para)
+  const tierPrices: { [key: string]: number } = {
+    basic: 10,      // 10 USDT/ay - Bot API access
+    pro: 50,        // 50 USDT/ay - Premium bot data
+    enterprise: 200 // 200 USDT/ay - Real-time bot analytics
+  };
+
+  const price = tierPrices[tier];
+  if (!price) {
+    return res.status(400).json({ success: false, error: "Geçersiz tier" });
+  }
+
+  // ✅ GERÇEK POLYGON DOĞRULAMASI (PolygonValidator)
+  const validation = await PolygonValidator.validateTransaction(
+    transactionHash,
+    price,
+    walletAddress
+  );
+
+  if (!validation.valid) {
+    addSystemLog(
+      `[❌ PREMIUM BAŞARISISIZ] ${email} - ${validation.error}`
+    );
+    return res.status(403).json({
+      success: false,
+      error: validation.error
+    });
+  }
+
+  // ✅ GERÇEK ÖDEME DOĞRULANDI - KURUCU CÜZDANA GİDİ
+  addSystemLog(
+    `[💎 PREMIUM SUBSCRIBER] ${email} - ${tier.toUpperCase()} Tier (${price} USDT) | ` +
+    `TX: ${transactionHash} | Wallet: ${walletAddress}`
+  );
+
+  // Kurucu kâr havuzuna ekle (GERÇEK PARA!)
+  AutomationManager.creatorProfitPool += price;
+
+  // Otomatik Polygon transfer
+  PayoutManager.triggerCryptoPayout(price).catch(() => {});
+
+  // API key oluştur
+  const apiKey = `PREMIUM-${tier.toUpperCase()}-${crypto.randomBytes(16).toString('hex')}`;
+
+  res.json({
+    success: true,
+    message: `✅ Premium ${tier} aktivasyonu başarılı!`,
+    apiKey: apiKey,
+    tier: tier,
+    botDataAccess: `Otonom bot ticaretini gerçek zamanda izle`,
+    endpoints: [
+      "GET /api/premium/bot-trades",
+      "GET /api/premium/bot-analytics",
+      "GET /api/premium/market-data",
+      "WS /ws/bot-stream"
+    ]
+  });
+});
+
+// v13.7: PREMIUM BOT TRADES - Gerçek müşteriler canlı bot verisi alıyor
+app.get("/api/premium/bot-trades", (req, res) => {
+  const apiKey = req.headers["x-api-key"];
+
+  if (!apiKey || !apiKey.toString().startsWith("PREMIUM-")) {
+    return res.status(401).json({ error: "Geçersiz premium key" });
+  }
+
+  // ExternalApiMarket'den canlı bot satış verisi (gerçek zamanlı)
+  res.json({
+    success: true,
+    activeTradesCount: ExternalApiMarket.salesHistory.length,
+    recentTrades: ExternalApiMarket.salesHistory.slice(-10).map(s => ({
+      buyerBot: ExternalApiMarket.botBuyers.find(b => b.id === s.buyerId)?.name,
+      assetTitle: state.assets.find(a => a.id === s.productId)?.title,
+      usdtAmount: s.amount,
+      timestamp: new Date(s.timestamp).toISOString()
+    })),
+    totalMarketValue: ExternalApiMarket.totalExternalRevenue
+  });
 });
 
 // v13.4: GERÇEK POLYGON USDT SATIŞI - BLOCKCHAIN DOĞRULAMA İLE
