@@ -90,7 +90,7 @@ export class MarketingManager {
   // İstatistikler
   static totalTraffic = 0;
   static lastMarketingRun = 0;
-  static readonly MARKETING_INTERVAL = 1000; // Her 1000 TICK'te pazarlama
+  static readonly MARKETING_INTERVAL = 200; // Her 200 TICK'te pazarlama (5x hızlı)
 
   /**
    * v12.0: Ana pazarlama döngüsü

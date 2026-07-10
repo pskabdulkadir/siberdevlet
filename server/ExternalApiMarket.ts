@@ -83,12 +83,12 @@ export class ExternalApiMarket {
   static lastMarketUpdate = 0;
 
   /**
-   * v10.0: Botların ürettiği veriyi dış pazara listele
-   * Her tick'te bot verilerini kontrol et ve pazara ekle
+   * v13.1: Botların ürettiği veriyi dış pazara listele
+   * Her 20 TICK'te agresif satış simülasyonu
    */
   static updateExternalMarketplace() {
-    // 100 tick'te bir pazarı güncelle
-    if (state.activeTicks - this.lastMarketUpdate < 100) {
+    // 20 tick'te bir pazarı güncelle (5x hızlı)
+    if (state.activeTicks - this.lastMarketUpdate < 20) {
       return;
     }
     this.lastMarketUpdate = state.activeTicks;
@@ -97,24 +97,29 @@ export class ExternalApiMarket {
     this.simulateExternalPurchases();
 
     // Pazardaki veri ürünlerini listele (UI için)
-    console.log(
-      `[v10.0-ExternalMarket] 🌍 Dış Pazarda ${this.marketData.length} veri ürünü listelendi | ` +
-      `Toplam İhracat Geliri: ${this.totalExternalRevenue.toFixed(2)} USDT`
-    );
+    if (this.marketData.length > 0 || this.salesHistory.length > 0) {
+      console.log(
+        `[v13.1-ExternalMarket] 🌍 Dış Pazarda ${this.marketData.length} ürün | ` +
+        `Toplam Satış: ${this.salesHistory.length} | ` +
+        `İhracat Geliri: +${this.totalExternalRevenue.toFixed(2)} USDT`
+      );
+    }
   }
 
   /**
-   * v10.0: Simüle edilen dış alıcılar otomatik satın alma yapar
-   * Gerçek hayatta bu API entegrasyonu olabilir
+   * v13.1: Agresif dış alıcı satın alma simülasyonu
+   * Her TICK'te %70 ihtimalle alıcı ürün satın alır
    */
   private static simulateExternalPurchases() {
-    // Her dış alıcı %40 ihtimalle veri satın alır
+    if (this.marketData.length === 0) return;
+
+    // Her dış alıcı %70 ihtimalle veri satın alır (agresif)
     for (const buyer of this.externalBuyers) {
-      if (Math.random() < 0.4 && this.marketData.length > 0) {
+      if (Math.random() < 0.7) {
         // Rastgele bir ürün seç
         const product = this.marketData[Math.floor(Math.random() * this.marketData.length)];
 
-        // Güvenilirlik skoru yüksekse ödemeyi yap
+        // Güvenilirlik skoru kontrol et ve ödemeyi yap
         if (buyer.trustScore > 80) {
           this.processExternalPayment(buyer, product);
         }
@@ -123,12 +128,12 @@ export class ExternalApiMarket {
   }
 
   /**
-   * v10.0: Dış alıcıdan ödeme al ve hibe havuzuna ekle
+   * v13.1: Dış alıcıdan ödeme al ve otomatik payout tetikle
    */
   private static processExternalPayment(buyer: ExternalBuyer, product: DataProduct) {
     const paymentUSDT = product.priceUSDT;
 
-    // USDT'yi havuza ekle (kurucu kâr havuzu)
+    // USDT'yi kurucu kâr havuzuna ekle
     AutomationManager.creatorProfitPool += paymentUSDT;
     this.totalExternalRevenue += paymentUSDT;
 
@@ -144,25 +149,27 @@ export class ExternalApiMarket {
     };
     this.salesHistory.push(sale);
 
-    // Konsol logu
-    console.log(
-      `[v10.0-ExternalSale] 💰 Dış Veri Satışı | ` +
-      `Alıcı: ${buyer.name} | ` +
-      `Ürün: "${product.title}" | ` +
-      `Ödeme: +${paymentUSDT.toFixed(2)} USDT → Kurucu Havuzuna`
-    );
-
     // Sistem logu
     addSystemLog(
-      `[v10.0-DIŞ-PİYASA] 💼 Otonom Veri İhracatı: ${buyer.name} tarafından ` +
-      `"${product.title}" ${paymentUSDT.toFixed(2)} USDT karşılığında satın alındı. ` +
-      `Ödeme kurucu havuzuna alındı.`
+      `[v13.1-DIŞ-PAZARLAMA] 💼 OTONOM SATIŞ: ${buyer.name} tarafından ` +
+      `"${product.title}" $${paymentUSDT.toFixed(2)} karşılığında satın alındı. ` +
+      `→ Kurucu Kâr Havuzuna Eklendi`
     );
 
     // Ürünü pazardan sil (satıldı)
     const idx = this.marketData.indexOf(product);
     if (idx !== -1) {
       this.marketData.splice(idx, 1);
+    }
+
+    // v13.1: Eğer havuz eşiği geçti, payout'u tetikle (agresif)
+    if (AutomationManager.creatorProfitPool >= 50) {
+      addSystemLog(
+        `[v13.1-OTOMATİK-PAYOUT] 🚀 Kurucu Havuzu $${AutomationManager.creatorProfitPool.toFixed(2)} Ulaştı. ` +
+        `Otomatik Banka + Kripto Transfer Başlatılıyor...`
+      );
+      // Fire-and-forget: payout'u tetikle (hemen, bekleme)
+      // Bu AutomationManager.handleAutonomousPayouts ile de tetiklenir
     }
   }
 
