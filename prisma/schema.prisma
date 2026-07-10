@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL", "postgresql://fake:fake@localhost/fake")
+}
+
+model Bot {
+  id                String    @id @default(cuid())
+  name              String
+  role              String
+  ministry          String
+  status            String
+  energy            Float
+  balance           Float
+  performanceScore  Float
+  createdTick       Int
+  logs              String[]
+  
+  // Skill Matrix
+  skillExtraction   Float
+  skillGeneration   Float
+  skillRefinement   Float
+  skillCrafting     Float
+  skillPricing      Float
+  skillCoding       Float
+  skillArchitecture Float
+  skillRegulation   Float
+  skillInspection   Float
+  skillGateway      Float
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("bots")
+}
+
+model DigitalAsset {
+  id                String    @id @default(cuid())
+  title             String
+  type              String
+  content           String
+  creatorId         String
+  creatorName       String
+  price             Float
+  sold              Boolean   @default(false)
+  buyerId           String?
+  timestamp         BigInt
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("digital_assets")
+}
+
+model LedgerTransaction {
+  id                String    @id @default(cuid())
+  fromId            String
+  fromName          String
+  toId              String
+  toName            String
+  amount            Float
+  purpose           String
+  timestamp         BigInt
+  
+  createdAt         DateTime  @default(now())
+  
+  @@map("ledger_transactions")
+}
+
+model Job {
+  id                String    @id @default(cuid())
+  queueName         String
+  name              String
+  status            String
+  data              Json
+  result            Json?
+  progress          Float
+  workerId          String?
+  error             String?
+  timestamp         BigInt
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("jobs")
+}
+
+model SimulationMeta {
+  id                String    @id @default("singleton")
+  activeTicks       Int
+  totalGAIA         Float
+  subsidyPool       Float
+  inflationRate     Float
+  taxRate           Float
+  interestRate      Float
+  resilienceScore   Float
+  serverCpu         Float
+  serverRam         Float
+  chaosEvents       Int
+  evolutionGeneration Int
+  recycledBotCount  Int
+  marketVolume      Float
+  rateLimitRisk     Float
+  proxyRotations    Int
+  activeProxy       String?
+  geminiMode        String
+  geminiQuotaExhausted Boolean
+  autoPayoutThreshold String
+  ownerIban         String?
+  ownerCryptoWallet String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("simulation_meta")
+}
+
+model BackupLog {
+  id                String    @id @default(cuid())
+  snapshotData      Json
+  backupSize        Int
+  success           Boolean
+  errorMessage      String?
+  
+  createdAt         DateTime  @default(now())
+  
+  @@map("backup_logs")
+}

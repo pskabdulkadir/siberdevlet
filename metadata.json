@@ -1,0 +1,8 @@
+{
+  "name": "Devlet Katmanları ve Bot Simülasyonu",
+  "description": "5 ana bakanlık ve meslek grubundaki botların asenkron BullMQ yapısıyla çalıştığı Siber-Dünya simülasyonu ve yönetim konsolu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

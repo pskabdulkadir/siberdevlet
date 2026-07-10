@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project GAIA - Cyber-World Simulator</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Inter, system-ui, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      #root { min-height: 100vh; }
+      .error { color: #ef4444; padding: 20px; background: #7f1d1d; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="error">
+        <h2>⏳ Yükleniyor...</h2>
+        <p>Uygulama başlatılıyor. Lütfen bekleyin.</p>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Fallback hata göstergesi
+      window.addEventListener('error', (e) => {
+        const root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = `
+            <div class="error">
+              <h2>❌ Uygulama Yükleme Hatası</h2>
+              <p>${e.message}</p>
+              <p>Sayfayı yenilemek için <a href="javascript:location.reload()" style="color:#4ade80">buraya</a> tıklayın.</p>
+            </div>
+          `;
+        }
+      });
+    </script>
+  </body>
+</html>
