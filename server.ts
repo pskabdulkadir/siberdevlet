@@ -51,31 +51,19 @@ function initializeAutonomousEnvironment() {
   // OWNER_CRYPTO_PRIVATE_KEY güvenlik için Render env'de tutulmalı, hardcoded olmamalı
   // process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY;
 
-  // 9. STRIPE LIVE MODE KONTROL
-  if (process.env.STRIPE_SECRET_KEY) {
-    if (process.env.STRIPE_SECRET_KEY.startsWith("sk_live_")) {
-      console.log(
-        "[SİBER-KURULUM] 💳 ✅ STRIPE LIVE MODE AKTIF - Gerçek para transferleri gerçekleştirilecektir!"
-      );
-    } else if (process.env.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
-      console.log(
-        "[SİBER-KURULUM] 💳 🧪 STRIPE TEST MODE - Sahte ödemelerle test çalıştırılıyor."
-      );
-    }
-  } else {
-    console.log(
-      "[SİBER-KURULUM] 💳 ⚠️ STRIPE_SECRET_KEY ayarlanmamış. Stripe ödemeleri simüle edilecektir."
-    );
-  }
+  // 9. STRIPE SIMÜLASYON (Gerçek transfer Polygon + IBAN'a)
+  console.log(
+    "[SİBER-KURULUM] 💳 STRIPE SIMÜLASYON - Dış müşteri ödemesi doğrudan Polygon + IBAN'a aktarılır (Sıfır Riski)"
+  );
 
   // 10. POLYGON RPC URL KONTROL
-  if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("your-api-key")) {
+  if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("YOUR_KEY")) {
     console.log(
-      "[SİBER-KURULUM] 🔗 ✅ POLYGON RPC URL AYARLI - Web3 USDT transferleri aktif."
+      "[SİBER-KURULUM] 🔗 ✅ POLYGON RPC URL AYARLI - Polygon USDT otomatik transferleri aktif."
     );
   } else {
     console.log(
-      "[SİBER-KURULUM] 🔗 ⚠️ POLYGON_RPC_URL ayarlanmamış. Polygon transferleri simüle edilecektir."
+      "[SİBER-KURULUM] 🔗 ⚠️ POLYGON_RPC_URL eksik. Polygon transferleri simüle edilecektir (Sıfır Risk)."
     );
   }
 
