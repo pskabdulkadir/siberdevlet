@@ -29,7 +29,8 @@ import {
   Briefcase,
   Globe,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  CheckCircle
 } from "lucide-react";
 import {
   Bot,
@@ -1687,89 +1688,21 @@ export default function App() {
                 {/* Left Column: Stripe/Crypto checkout & Active API Keys (6 cols) */}
                 <div className="lg:col-span-6 space-y-6">
                   
-                  {/* Stripe/Crypto Simulator Checkout Card */}
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 h-16 w-16 bg-amber-500/5 rounded-bl-full pointer-events-none"></div>
-                    
-                    <h3 className="text-xs font-display font-bold text-slate-200 uppercase tracking-widest border-b border-slate-800 pb-2.5 mb-4 flex items-center space-x-1.5">
-                      <CreditCard className="h-3.5 w-3.5 text-amber-400" />
-                      <span>Gerçek Para Abonelik Köprüsü (Stripe / Kripto)</span>
+                  {/* Otomatik Abonelik & Transfer Bildirimi */}
+                  <div className="bg-emerald-950/30 border border-emerald-600/40 rounded-xl p-4 shadow-lg">
+                    <h3 className="text-xs font-display font-bold text-emerald-300 uppercase tracking-widest border-b border-emerald-600/40 pb-2.5 mb-3 flex items-center space-x-1.5">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>Otomatik Doğrudan Transfer Sistemi Aktif</span>
                     </h3>
-
-                    <form onSubmit={handleSubscribe} className="space-y-3.5">
-                      <div>
-                        <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">Dış Kullanıcı E-Posta Adresi</label>
-                        <input
-                          type="email"
-                          required
-                          value={subEmail}
-                          onChange={(e) => setSubEmail(e.target.value)}
-                          placeholder="client@dunya.com"
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[9px] text-slate-500 block font-mono uppercase mb-1">Abonelik Planı</label>
-                          <select
-                            value={subPlan}
-                            onChange={(e) => setSubPlan(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                          >
-                            <option value="starter">Starter ($19)</option>
-                            <option value="pro">Pro ($49)</option>
-                            <option value="enterprise">Enterprise ($149)</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[9px] text-slate-500 block font-mono uppercase mb-1">Ödeme Ağ Geçidi</label>
-                          <select
-                            value={subPaymentMethod}
-                            onChange={(e) => setSubPaymentMethod(e.target.value as any)}
-                            className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                          >
-                            <option value="Stripe">Stripe USD</option>
-                            <option value="Crypto">Crypto (BTC/SOL)</option>
-                          </select>
-                        </div>
-
-                        <div className="flex flex-col justify-end">
-                          <button
-                            type="submit"
-                            disabled={isActionLoading}
-                            className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-800 text-slate-950 font-bold text-xs py-2 px-2 rounded-lg transition duration-150 flex items-center justify-center space-x-1"
-                          >
-                            {isActionLoading ? <span>İşleniyor...</span> : <span>Öde & Üret</span>}
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-
-                    {/* Display freshly generated API Key info */}
-                    {apiConsoleKey && (
-                      <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg space-y-1.5">
-                        <span className="text-[9px] text-amber-400 font-mono block uppercase tracking-wider">YENİ API ANAHTARI ÜRETİLDİ:</span>
-                        <div className="flex items-center justify-between">
-                          <code className="text-xs font-mono font-bold text-slate-200 bg-slate-950/80 px-2.5 py-1 rounded border border-slate-800 select-all">
-                            {apiConsoleKey}
-                          </code>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(apiConsoleKey);
-                              alert("API anahtarı panoya kopyalandı!");
-                            }}
-                            className="text-[10px] text-amber-400 hover:underline font-mono"
-                          >
-                            Kopyala
-                          </button>
-                        </div>
-                        <p className="text-[9px] text-slate-400">
-                          Bu anahtarı sağdaki <strong>API Test Konsolu</strong>'nda anında sorgulayabilirsiniz.
-                        </p>
-                      </div>
-                    )}
+                    <div className="space-y-2.5 text-xs text-emerald-200 font-mono">
+                      <p>✅ <span className="text-emerald-300 font-bold">Stripe / Kripto Ödemesi Kaldırıldı</span></p>
+                      <p>✅ Tüm abonelik ödeme doğrudan:</p>
+                      <ul className="ml-4 space-y-1 text-emerald-200/80">
+                        <li>→ Banka: {process.env.OWNER_IBAN ? process.env.OWNER_IBAN.substring(0, 6) + '...' : 'TR...IBAN'}</li>
+                        <li>→ Kripto: Polygon USDT Cüzdanı</li>
+                      </ul>
+                      <p className="text-emerald-300 font-bold mt-3">Sistem otomatik transfer yapıyor. Manuel ödeme gerekmez.</p>
+                    </div>
                   </div>
 
                   {/* Active Subscriptions List Table */}

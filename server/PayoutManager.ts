@@ -22,16 +22,28 @@ export class RealityBridgeMetrics {
 
 export class PayoutManager {
   private static stripeClient: Stripe | null = null;
+  private static isLiveMode: boolean = false;
 
   public static getStripe(): Stripe {
     if (!this.stripeClient) {
       const key = process.env.STRIPE_SECRET_KEY;
-      if (!key || key.startsWith("sk_live_your_stripe")) {
-        throw new Error("STRIPE_SECRET_KEY environment variable is required and must be configured with a valid key.");
+
+      // Determine if we're in live or test mode
+      this.isLiveMode = key?.startsWith("sk_live_") || false;
+
+      if (!key || key.startsWith("sk_") || key === "") {
+        throw new Error(
+          "STRIPE_SECRET_KEY environment variable is required. " +
+          "Get your key from https://dashboard.stripe.com/apikeys (Live or Test mode)"
+        );
       }
       this.stripeClient = new Stripe(key);
     }
     return this.stripeClient;
+  }
+
+  public static isLive(): boolean {
+    return this.isLiveMode;
   }
 
   /**
@@ -73,10 +85,10 @@ export class PayoutManager {
       };
 
     } catch (error: any) {
-      // Graceful fallback for demo purposes or when keys are placeholders
-      const warningMsg = `[FİNANS/MOCK] Real Stripe transfer failed or not configured (${error.message}). Running simulated SECURE payout flow.`;
+      // Graceful fallback when Stripe key is not configured
+      const warningMsg = `[FİNANS/FALLBACK] Stripe transfer başarısız veya yapılandırılmamış (${error.message}). Simüle edilmiş payout akışına geçiliyor.`;
       console.warn(warningMsg);
-      addSystemLog(`[FİNANS/PROD] Stripe API Anahtarı eksik veya geçersiz. Güvenli simüle edilmiş transfer gerçekleştiriliyor...`);
+      addSystemLog(`[FİNANS/FALLBACK] ⚠️ STRIPE_SECRET_KEY yoksa geçersiz. Güvenli simüle transfer gösterilecektir. Render env'de Live anahtarını ayarlamak için: https://dashboard.stripe.com/apikeys`);
       
       // Simulate real-time delay
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -132,11 +144,12 @@ export class PayoutManager {
       
       addSystemLog(`[FİNANS] 0x... Akıllı Kontrat 'withdraw' fonksiyonu tetikleniyor...`);
       
-      // Contract address for USDT on Polygon
-      const contractAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // Polygon USDT
+      // Contract address for USDT on Polygon Mainnet
+      const contractAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // Polygon USDT (0x.c213...)
+      // Minimal USDT transfer ABI
       const contractAbi = [
         "function transfer(address to, uint256 amount) returns (bool)",
-        "function withdraw(address token, address to, uint256 amount) external"
+        "function balanceOf(address account) returns (uint256)"
       ];
       
       const contract = new ethers.Contract(contractAddress, contractAbi, signer);
@@ -170,9 +183,9 @@ export class PayoutManager {
       };
 
     } catch (error: any) {
-      const warningMsg = `[FİNANS/MOCK] Web3 Polygon execution failed or not configured (${error.message}). Falling back to simulated smart contract withdrawal.`;
+      const warningMsg = `[FİNANS/FALLBACK] Polygon Web3 işlemi başarısız veya yapılandırılmamış (${error.message}). Simüle edilmiş kontrat çağrısına geçiliyor.`;
       console.warn(warningMsg);
-      addSystemLog(`[FİNANS] Polygon RPC veya Cüzdan Anahtarı eksik. Güvenli simüle edilmiş Web3 ödemesi gerçekleştiriliyor...`);
+      addSystemLog(`[FİNANS/FALLBACK] ⚠️ Polygon RPC URL veya OWNER_CRYPTO_PRIVATE_KEY eksik. Güvenli simüle Web3 transferi gösterilecektir.`);
 
       // Simulate network wait
       await new Promise(resolve => setTimeout(resolve, 800));

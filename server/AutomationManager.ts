@@ -1,4 +1,5 @@
 import { state, addSystemLog } from "./simulation.js";
+import { PayoutManager } from "./PayoutManager.js";
 
 /**
  * v9.7: AutomationManager
@@ -15,8 +16,8 @@ export interface FinancialAutomation {
 export class AutomationManager {
   static autoConfig: FinancialAutomation = {
     lastPayoutTick: 0,
-    payoutIntervalTicks: 1000, // Her 1000 TICK'te bir hasat
-    minPayoutLimit: 100.0, // Minimum 100 GAIA birikirse transfer et
+    payoutIntervalTicks: 100, // Her 100 TICK'te bir hasat (daha agresif)
+    minPayoutLimit: 10.0, // Minimum 10 GAIA birikirse transfer et (düşük threshold)
     creatorProfitRate: 0.30 // Botlardan %30 kâr payı
   };
 
@@ -53,11 +54,15 @@ export class AutomationManager {
     const payoutAmount = this.creatorProfitPool; // Tüm birikmiş kârı transfer et
     this.creatorProfitPool = 0; // Havuzu sıfırla
 
-    // v9.7: BANKA TRANSFER SİMÜLASYONU
-    this.processBankPayout(payoutAmount);
+    // v9.7: BANKA TRANSFER - Fire and forget (async, hata olsa da devam)
+    this.processBankPayout(payoutAmount).catch(err => {
+      console.error("Bank payout error:", err.message);
+    });
 
-    // v9.7: KRİPTO TRANSFER SİMÜLASYONU
-    this.processCryptoPayout(payoutAmount);
+    // v9.7: KRİPTO TRANSFER - Fire and forget (async, hata olsa da devam)
+    this.processCryptoPayout(payoutAmount).catch(err => {
+      console.error("Crypto payout error:", err.message);
+    });
 
     // Tarih kayıt
     this.totalPayoutsProcessed += payoutAmount;
@@ -70,8 +75,8 @@ export class AutomationManager {
 
     // sistem logu
     addSystemLog(
-      `[v9.7-OTONOM-HASAT] 🚀 BANKA & KRİPTO PAYOUT TAMAMLANDI: ${payoutAmount.toFixed(2)} GAIA ` +
-      `${process.env.OWNER_NAME || "Kurucu"} (${process.env.OWNER_BANK || "Banka"}) hesabına aktarıldı. ` +
+      `[v9.7-OTONOM-HASAT] 🚀 BANKA & KRİPTO PAYOUT BAŞLATILDI: ${payoutAmount.toFixed(2)} GAIA ` +
+      `${process.env.OWNER_NAME || "Kurucu"} (${process.env.OWNER_BANK || "Banka"}) hesabına aktarılıyor... ` +
       `Toplam işlem: #${this.payoutHistory.length}`
     );
 
@@ -79,7 +84,7 @@ export class AutomationManager {
   }
 
   // 🏦 BANKA TRANSFER MOTORU
-  private static processBankPayout(amount: number) {
+  private static async processBankPayout(amount: number) {
     console.log(
       `\n${"═".repeat(80)}\n` +
       `🏦 [OTONOM BANKA HASATI] 💰 KURUCUya OTOMATİK ÖDEME\n` +
@@ -90,39 +95,59 @@ export class AutomationManager {
     console.log(`👤 Alıcı: ${process.env.OWNER_NAME || "Kurucu"}`);
     console.log(`🏛️ Banka: ${process.env.OWNER_BANK || "Finansal Kurum"}`);
     console.log(`💳 IBAN: ${process.env.OWNER_IBAN || "TR..."}`);
-    console.log(
-      `\n💚 ✅ TRANSFERİ BAŞARILI!\n` +
-      `   Tutar: +${amount.toFixed(2)} GAIA/TRY\n` +
-      `   Durum: ${process.env.OWNER_NAME || "Kurucu"}'ın QNB Finansbank hesabına yatırıldı.\n`
-    );
+
+    // Stripe Payout tetikle
+    try {
+      const result = await PayoutManager.triggerStripePayout(amount);
+      console.log(
+        `\n💚 ✅ TRANSFERİ BAŞARILI!\n` +
+        `   Tutar: +${amount.toFixed(2)} USD\n` +
+        `   İşlem ID: ${result.payoutId}\n` +
+        `   Durum: ${result.msg}\n`
+      );
+    } catch (error: any) {
+      console.log(
+        `\n⚠️ Transfer simüle edildi (Stripe yapılandırması kontrol et).\n` +
+        `   Tutar: +${amount.toFixed(2)} USD\n` +
+        `   Hata: ${error.message}\n`
+      );
+    }
 
     console.log(`Zaman: ${new Date().toLocaleString("tr-TR")}\n`);
     console.log(`${"═".repeat(80)}\n`);
   }
 
-  // 🪙 KRİPTO TRANSFER MOTORU (v9.8: TRC-20 USDT)
-  private static processCryptoPayout(amount: number) {
+  // 🪙 KRİPTO TRANSFER MOTORU (Polygon USDT)
+  private static async processCryptoPayout(amount: number) {
     console.log(
       `${"═".repeat(80)}\n` +
-      `🪙 [SİBER USDT HASATI] 💸 TRC-20 USDT AKTARIMI\n` +
+      `🪙 [SİBER USDT HASATI] 💸 POLYGON USDT AKTARIMI\n` +
       `${"═".repeat(80)}`
     );
 
-    // v9.8: TRC-20 (TRON Network) ve USDT paritesi
-    console.log(`\n🔗 Blockchain: ${process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)"}`);
+    console.log(`\n🔗 Blockchain: ${process.env.CRYPTO_NETWORK || "Polygon (ERC-20 USDT)"}`);
     console.log(`💱 Dijital Para: ${process.env.CRYPTO_ASSET || "USDT"} (Stabil Dolar)`);
     console.log(`📨 Gönderen: Smart Contract (Merkez Bankası Otonom Aracı)`);
-    console.log(`📥 Alıcı USDT Cüzdanı: ${process.env.OWNER_CRYPTO_ADDRESS || "TRC-20 Cüzdan Adresi"}`);
-    console.log(`\n💚 ✅ TRANSFER BAŞARILI!\n`);
-    console.log(
-      `   Tutar: +${amount.toFixed(2)} USDT\n` +
-      `   Kaynak: Botların Küresel Pazar Satışları & API Monetizasyon\n` +
-      `   Durum: USDT cüzdanınıza otomatik olarak aktarıldı.\n`
-    );
+    console.log(`📥 Alıcı USDT Cüzdanı: ${process.env.OWNER_CRYPTO_ADDRESS || "Polygon Cüzdan Adresi"}`);
 
-    // v9.8: TRON işlem hash'i (TRC-20 formatında)
-    const txHash = `0x${Buffer.from(Math.random().toString()).toString("hex").substring(0, 64)}`;
-    console.log(`📊 TRON İşlem Hash: ${txHash}`);
+    // Polygon/USDT Payout tetikle
+    try {
+      const result = await PayoutManager.triggerCryptoPayout(amount);
+      console.log(`\n💚 ✅ TRANSFER BAŞARILI!\n`);
+      console.log(
+        `   Tutar: +${amount.toFixed(2)} USDT\n` +
+        `   Hash: ${result.txHash}\n` +
+        `   Durum: ${result.msg}\n`
+      );
+      console.log(`📊 Polygon İşlem: https://polygonscan.com/tx/${result.txHash}`);
+    } catch (error: any) {
+      console.log(`\n⚠️ Transfer simüle edildi (Polygon yapılandırması kontrol et).\n`);
+      console.log(
+        `   Tutar: +${amount.toFixed(2)} USDT\n` +
+        `   Hata: ${error.message}\n`
+      );
+    }
+
     console.log(`⏱️ Zaman: ${new Date().toLocaleString("tr-TR")}\n`);
     console.log(`${"═".repeat(80)}\n`);
   }

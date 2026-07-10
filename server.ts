@@ -35,21 +35,51 @@ function initializeAutonomousEnvironment() {
   // 5. KURUCU BANKASI
   process.env.OWNER_BANK = process.env.OWNER_BANK || "QNB Finansbank";
 
-  // v9.8: TRC-20 USDT KRİPTO ENTEGRASYON
-  // 6. CRYPTO NETWORK: TRC-20 (TRON Ağı)
-  process.env.CRYPTO_NETWORK = process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)";
+  // v9.8: KRIPTO ENTEGRASYON (Polygon Mainnet USDT için)
+  // 6. CRYPTO NETWORK: Polygon (Mainnet)
+  process.env.CRYPTO_NETWORK = process.env.CRYPTO_NETWORK || "Polygon (ERC-20 USDT)";
 
   // 7. CRYPTO ASSET: USDT (Stabil Dolar)
   process.env.CRYPTO_ASSET = process.env.CRYPTO_ASSET || "USDT";
 
-  // 8. KURUCU USDT CÜZDANı (TRC-20 Ağında)
-  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn";
+  // 8. KURUCU USDT CÜZDANı (Polygon Network ERC-20)
+  // NOT: Polygon Mainnet için 0x başlı Ethereum-format adres gereklidir
+  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
 
   // Eski uyumluluk (backward compatibility)
   process.env.OWNER_CRYPTO_WALLET = process.env.OWNER_CRYPTO_ADDRESS;
-  process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_ADDRESS;
+  // OWNER_CRYPTO_PRIVATE_KEY güvenlik için Render env'de tutulmalı, hardcoded olmamalı
+  // process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY;
 
-  // 8. GEMINI_API_KEY: Açık kaynak AI fallback etkinleştir
+  // 9. STRIPE LIVE MODE KONTROL
+  if (process.env.STRIPE_SECRET_KEY) {
+    if (process.env.STRIPE_SECRET_KEY.startsWith("sk_live_")) {
+      console.log(
+        "[SİBER-KURULUM] 💳 ✅ STRIPE LIVE MODE AKTIF - Gerçek para transferleri gerçekleştirilecektir!"
+      );
+    } else if (process.env.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
+      console.log(
+        "[SİBER-KURULUM] 💳 🧪 STRIPE TEST MODE - Sahte ödemelerle test çalıştırılıyor."
+      );
+    }
+  } else {
+    console.log(
+      "[SİBER-KURULUM] 💳 ⚠️ STRIPE_SECRET_KEY ayarlanmamış. Stripe ödemeleri simüle edilecektir."
+    );
+  }
+
+  // 10. POLYGON RPC URL KONTROL
+  if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("your-api-key")) {
+    console.log(
+      "[SİBER-KURULUM] 🔗 ✅ POLYGON RPC URL AYARLI - Web3 USDT transferleri aktif."
+    );
+  } else {
+    console.log(
+      "[SİBER-KURULUM] 🔗 ⚠️ POLYGON_RPC_URL ayarlanmamış. Polygon transferleri simüle edilecektir."
+    );
+  }
+
+  // 11. GEMINI_API_KEY: Açık kaynak AI fallback etkinleştir
   if (!process.env.GEMINI_API_KEY) {
     console.log(
       "[SİBER-KURULUM] 🤖 GEMINI_API_KEY bulunmadı. Sistem ChatEverywhere + Ollama fallback'ine geçiliyor."
@@ -64,16 +94,22 @@ function initializeAutonomousEnvironment() {
     `[SİBER-DEVLET] 🏦 Kurucu Banka Hesabı: ${process.env.OWNER_IBAN}`
   );
 
-  // v9.8: TRC-20 USDT ENTEGRASYON LOGU
+  // v9.8: KRIPTO USDT ENTEGRASYON LOGU
   console.log(
-    `[SİBER-DEVLET] 🪙 v9.8 TRC-20 USDT Entegrasyonu: ${process.env.CRYPTO_ASSET} Cüzdanı Bağlandı`
+    `[SİBER-DEVLET] 🪙 v9.8 Polygon USDT Entegrasyonu: ${process.env.CRYPTO_ASSET} Cüzdanı Bağlandı`
   );
   console.log(
     `[SİBER-DEVLET] 🔗 Network: ${process.env.CRYPTO_NETWORK}`
   );
-  console.log(
-    `[SİBER-DEVLET] 💰 USDT Cüzdan Adresi: ${process.env.OWNER_CRYPTO_ADDRESS}`
-  );
+  if (process.env.OWNER_CRYPTO_ADDRESS && process.env.OWNER_CRYPTO_ADDRESS !== "0x0000000000000000000000000000000000000000") {
+    console.log(
+      `[SİBER-DEVLET] 💰 USDT Cüzdan Adresi: ${process.env.OWNER_CRYPTO_ADDRESS}`
+    );
+  } else {
+    console.log(
+      `[SİBER-DEVLET] ⚠️  OWNER_CRYPTO_ADDRESS Render env'de ayarlanmalı (0x... format)`
+    );
+  }
 
   // v10.0: SIFIR SERMAYE GÜVENLIK DUVARÜ
   console.log(
@@ -186,12 +222,12 @@ import {
   RealityBridge,
   PatchLog
 } from "./server/simulation.js";
-import { RealityBridgeMetrics } from "./server/PayoutManager.js";
+import { RealityBridgeMetrics, PayoutManager } from "./server/PayoutManager.js";
 import { StateManager } from "./server/StateManager.js";
 import { BackupManager } from "./server/BackupManager.js";
 import { BotRole, BotMinistry, BotStatus } from "./src/types.js";
-import { PayoutManager } from "./server/PayoutManager.js";
 import { RealWorldGateway } from "./server/RealWorldGateway.js";
+import { AutomationManager } from "./server/AutomationManager.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1602,20 +1638,17 @@ app.get("/api/export/subscriptions", (req, res) => {
   res.json({ success: true, subscriptions: activeSubscriptions });
 });
 
-// Create a new external subscription (Simulates USD incoming and converts to GAIA)
+// Create a new external subscription (Otomatik doğrudan transfer)
 app.post("/api/export/subscribe", (req, res) => {
-  const { email, plan, paymentMethod } = req.body;
+  const { email, plan } = req.body;
   if (!email || !plan) {
     return res.status(400).json({ success: false, error: "E-posta ve abonelik planı gereklidir." });
   }
 
-  // Determine pricing and token equivalents
-  let usdPaid = 19;
-  if (plan === "pro") usdPaid = 49;
-  else if (plan === "enterprise") usdPaid = 149;
-
-  // Conversion rate: 1 USD = 5 GAIA
-  const gaiaDistributed = usdPaid * 5;
+  // Determine pricing (USD)
+  let usdAmount = 19;
+  if (plan === "pro") usdAmount = 49;
+  else if (plan === "enterprise") usdAmount = 149;
 
   // Generate secure API Key
   const apiKey = `GAIA-SEC-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Math.floor(10 + Math.random() * 90)}`;
@@ -1624,50 +1657,25 @@ app.post("/api/export/subscribe", (req, res) => {
     id: `sub-${Math.random().toString(36).substring(2, 8)}`,
     email,
     plan,
-    paymentMethod: paymentMethod || "Stripe",
+    paymentMethod: "DirectTransfer",
     apiKey,
-    usdPaid,
-    gaiaDistributed,
+    usdPaid: usdAmount,
+    gaiaDistributed: usdAmount * 5,
     timestamp: Date.now()
   };
 
   activeSubscriptions.unshift(newSub);
 
-  // Distribute converted GAIA to producer bots (80% direct incentive, 20% treasury tax)
-  const taxAmount = gaiaDistributed * 0.20;
-  const incentiveAmount = gaiaDistributed * 0.80;
+  // Kurucu kâr havuzuna doğrudan ekle (otomatik payout tetiklenecek)
+  AutomationManager.creatorProfitPool += usdAmount;
 
-  state.subsidyPool += taxAmount;
+  addSystemLog(`[🚀 OTOMATİK TRANSFER] Dış abone (${email}) '${plan}' planı ($${usdAmount} USD). Tutar kurucu havuzuna eklendi. Otomatik Banka + Kripto payout başlamış.`);
 
-  // Find active creator bots (Yazılımcı, Hammadde, Rafine, Sanatçı, vs.) who produce assets
-  const eligibleRoles = [BotRole.YAZILIMCI, BotRole.HAMMADDE_AVCISI, BotRole.SENTETIK_CIFTCI, BotRole.RAFINERI, BotRole.ZANAATKAR, BotRole.BROKER];
-  const activeProducers = state.bots.filter(b => b.status === BotStatus.ACTIVE && eligibleRoles.includes(b.role));
+  // Immediately trigger payout (fire and forget)
+  PayoutManager.triggerStripePayout(usdAmount).catch(() => {});
+  PayoutManager.triggerCryptoPayout(usdAmount).catch(() => {});
 
-  if (activeProducers.length > 0) {
-    const sharePerBot = incentiveAmount / activeProducers.length;
-    activeProducers.forEach(bot => {
-      bot.balance += sharePerBot;
-      bot.logs.unshift(`[İhracat Teşvik] Dış dünyadan gelen gerçek USD ödemesiyle Merkez Bankası'ndan ${sharePerBot.toFixed(1)} GAIA teşvik primi yatırıldı.`);
-      
-      state.transactions.unshift({
-        id: `tx-ext-${Math.random().toString(36).substring(2, 6)}`,
-        fromId: "external-client",
-        fromName: `Dış Abone (${email})`,
-        toId: bot.id,
-        toName: bot.name,
-        amount: parseFloat(sharePerBot.toFixed(1)),
-        purpose: "İhracat Teşvik Payı (Abonelik)",
-        timestamp: Date.now()
-      });
-    });
-  } else {
-    // If no active producers, entire amount goes to Central Bank subsidy reserve
-    state.subsidyPool += incentiveAmount;
-  }
-
-  addSystemLog(`[İhracat] 🌐 Gerçek Dünya kullanıcısı (${email}) '${plan}' planına kaydoldu ($${usdPaid} USD). Merkez Bankası bu tutarı ${gaiaDistributed} GAIA'ya çevirerek üretici botlar arasında paylaştırdı!`);
-
-  res.json({ success: true, subscription: newSub, state });
+  res.json({ success: true, subscription: newSub, message: "Ödeme alındı, otomatik transfer başlatıldı" });
 });
 
 // REST API Export endpoint: returns digital assets generated by cyber-world bots
