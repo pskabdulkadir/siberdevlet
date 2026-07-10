@@ -12,6 +12,7 @@ import { GatewayManager } from "./GatewayManager.js";
 import { AutomationManager } from "./AutomationManager.js";
 import { ExternalApiMarket } from "./ExternalApiMarket.js";
 import { MarketingManager } from "./MarketingManager.js";
+import { AutomatedMarketing } from "./AutomatedMarketing.js";
 import {
   Bot,
   BotMinistry,
@@ -676,6 +677,9 @@ export class PlanetManager {
 
     // 19. v12.0: OTONOM PAZARLAMA (Autonomous Growth Hacking)
     MarketingManager.executeMarketingCycle(state.activeTicks);
+
+    // v13.7: OTOMATIK SOSYAL MEDYA PAYLAŞIMI (Twitter, Reddit, GitHub, Medium, Discord, Telegram)
+    await AutomatedMarketing.executeAutomatedMarketing(state.activeTicks);
 
     // v12.0: Pazarlama istatistiklerini state'e senkronize et
     state.marketingCampaigns = MarketingManager.campaigns.length;
