@@ -195,6 +195,7 @@ import { BackupManager } from "./server/BackupManager.js";
 import { BotRole, BotMinistry, BotStatus } from "./src/types.js";
 import { RealWorldGateway } from "./server/RealWorldGateway.js";
 import { AutomationManager } from "./server/AutomationManager.js";
+import { PolygonValidator } from "./server/PolygonValidator.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1605,14 +1606,15 @@ app.get("/api/export/subscriptions", (req, res) => {
   res.json({ success: true, subscriptions: activeSubscriptions });
 });
 
-// v13.4: GERÇEK POLYGON USDT SATIŞI
+// v13.4: GERÇEK POLYGON USDT SATIŞI - BLOCKCHAIN DOĞRULAMA İLE
 app.post("/api/purchase-asset", express.json(), async (req, res) => {
   const { buyerEmail, assetId, usdtAmount, buyerWallet, transactionHash } = req.body;
 
-  if (!buyerEmail || !assetId || !usdtAmount || !buyerWallet) {
+  // Parametreler kontrol
+  if (!buyerEmail || !assetId || !usdtAmount || !buyerWallet || !transactionHash) {
     return res.status(400).json({
       success: false,
-      error: "Gerekli parametreler: buyerEmail, assetId, usdtAmount, buyerWallet"
+      error: "Gerekli: buyerEmail, assetId, usdtAmount, buyerWallet, transactionHash"
     });
   }
 
@@ -1622,31 +1624,48 @@ app.post("/api/purchase-asset", express.json(), async (req, res) => {
     return res.status(404).json({ success: false, error: "Varlık bulunamadı" });
   }
 
-  // Ödemeyi Polygon'dan doğrula (şu anda simüle)
-  // Gerçekte: Polygon network'e bakıp TX doğrulamak gerekir
+  // ⚠️ KRİTİK: POLYGON BLOCKCHAIN DOĞRULAMASI
+  const validation = await PolygonValidator.validateTransaction(
+    transactionHash,
+    parseFloat(usdtAmount),
+    buyerWallet
+  );
 
+  if (!validation.valid) {
+    addSystemLog(
+      `[❌ SAHTE ÖDEME DENEMESİ] ${buyerEmail} - Sebep: ${validation.error}`
+    );
+    return res.status(403).json({
+      success: false,
+      error: validation.error,
+      hint: "Lütfen geçerli bir Polygon USDT transaction gönderin"
+    });
+  }
+
+  // ✅ ÖDEME DOĞRULANDI!
   addSystemLog(
     `[💰 GERÇEK SATIŞ] ${buyerEmail} tarafından "${asset.title}" satın alındı | ` +
-    `Ödeme: ${usdtAmount} USDT (Polygon) | Cüzdan: ${buyerWallet}`
+    `Ödeme: ${usdtAmount} USDT (Polygon - DOĞRULANMIŞ) | TX: ${transactionHash}`
   );
 
   // Kurucu kâr havuzuna USDT tutarını ekle
   AutomationManager.creatorProfitPool += parseFloat(usdtAmount);
 
-  // Otomatik payout tetikle
+  // Otomatik payout tetikle (cüzdana geri gönder)
   PayoutManager.triggerCryptoPayout(parseFloat(usdtAmount)).catch(() => {});
 
-  // Asset delivery
+  // Asset delivery - download token
   const downloadToken = `token-${crypto.randomBytes(16).toString('hex')}`;
 
   res.json({
     success: true,
-    message: `Ödeme alındı! ${asset.title} dosyası hazırlanıyor...`,
+    message: `✅ Ödeme doğrulandı! ${asset.title} dosyası hazırlanıyor...`,
     asset: {
       id: asset.id,
       title: asset.title,
       downloadToken: downloadToken,
-      expiresIn: "24 hours"
+      expiresIn: "24 hours",
+      txHash: transactionHash
     }
   });
 });
