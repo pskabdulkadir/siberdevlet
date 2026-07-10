@@ -21,7 +21,8 @@ import {
   SkillMatrix
 } from "../src/types.js";
 
-// Initialize Gemini Client
+// v9.5: Open-Source AI Integration (Anahtarsız)
+// Gemini API varsa kullan, yoksa açık kaynak fallback kullan
 let ai: GoogleGenAI | null = null;
 if (process.env.GEMINI_API_KEY) {
   try {
@@ -33,12 +34,66 @@ if (process.env.GEMINI_API_KEY) {
         }
       }
     });
-    console.log("Gemini API client successfully initialized in simulation backend.");
+    console.log("[AI] Gemini API client başarıyla yüklendi.");
   } catch (err) {
-    console.error("Failed to initialize Gemini API client:", err);
+    console.error("[AI] Gemini başlatılamadı, açık kaynak fallback'e geçiliyor:", err);
   }
 } else {
-  console.log("No GEMINI_API_KEY found. Running simulation with procedural backup generators.");
+  console.log("[AI] GEMINI_API_KEY bulunamadı. Açık kaynak AI proxy kullanılacak.");
+}
+
+// v9.5: Açık Kaynak AI Çağrı Fonksiyonu (API key gerektirmez)
+async function getOpenSourceAIResponse(prompt: string): Promise<string> {
+  try {
+    // ChatEverywhere API (Ücretsiz, anahtarsız, sürdürülebilir)
+    const response = await fetch("https://chateverywhere.app/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 500
+      }),
+      timeout: 10000
+    } as any);
+
+    if (!response.ok) {
+      throw new Error(`API yanıt: ${response.status}`);
+    }
+
+    const data = await response.json() as any;
+    if (data?.choices?.[0]?.message?.content) {
+      return data.choices[0].message.content;
+    }
+
+    return "Karar motoru geçici olarak kullanılamıyor. Otonom mod devam ediyor.";
+  } catch (error) {
+    // Fallback: Yerel Ollama varsa dene
+    try {
+      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama2",
+          prompt: prompt,
+          stream: false
+        }),
+        timeout: 5000
+      } as any);
+
+      if (ollamaResponse.ok) {
+        const data = await ollamaResponse.json() as any;
+        return data?.response || "Ollama yanıt veremedi.";
+      }
+    } catch (ollamaErr) {
+      // Ollama de çalışmıyorsa sessiz başarısız
+    }
+
+    // Son çare: Procedural fallback
+    return "Otonom karar motoru geçici olarak çevrimdışı. Sistem procedural moda geçti.";
+  }
 }
 
 // Global In-Memory Simulation State
