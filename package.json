@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@octokit/rest": "^20.0.2",
     "@prisma/client": "^5.8.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -24,6 +25,7 @@
     "pdfkit": "^0.19.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "snoowrap": "^1.25.0",
     "stripe": "^22.3.1",
     "vite": "^6.2.3",
     "ws": "^8.21.0"

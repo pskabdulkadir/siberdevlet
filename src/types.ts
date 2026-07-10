@@ -168,4 +168,17 @@ export interface SimulationState {
   }>;
   creatorProfitPool?: number; // v9.7: Kurucu kâr payı havuzu
   totalPayoutsProcessed?: number; // v9.7: Toplam ödenen miktar
+  externalMarketData?: Array<{
+    id: string;
+    title: string;
+    type: "RefinedData" | "ReportAnalysis" | "AITraining" | "CodeModule";
+    content: string;
+    sourceBot: string;
+    priceUSDT: number;
+    timestamp: number;
+  }>; // v10.0: Dış pazarda listelenen ürünler
+  externalRevenue?: number; // v10.0: Dış veri satışından elde edilen gelir
+  externalSalesCount?: number; // v10.0: Toplam dış satış sayısı
+  marketingCampaigns?: number; // v12.0: Pazarlama kampanyası sayısı
+  estimatedTraffic?: number; // v12.0: Tahmini ziyaretçi sayısı
 }

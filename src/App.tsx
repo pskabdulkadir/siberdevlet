@@ -45,7 +45,7 @@ import CyberWorldMap from "./components/CyberWorldMap";
 
 export default function App() {
   const [state, setState] = useState<SimulationState | null>(null);
-  const [activeTab, setActiveTab] = useState<"map" | "export" | "ministries" | "queues" | "marketplace" | "ledger" | "contracts" | "admin">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "export" | "ministries" | "queues" | "marketplace" | "ledger" | "contracts" | "admin" | "automation">("map");
   const [selectedBot, setSelectedBot] = useState<Bot | null>(null);
   const [spawnRole, setSpawnRole] = useState<BotRole>(BotRole.HAMMADDE_AVCISI);
   const [spawnMinistry, setSpawnMinistry] = useState<BotMinistry>(BotMinistry.URETIM);
@@ -113,6 +113,35 @@ export default function App() {
     chromaDBSize: 0,
     blockchainTxCount: 0
   });
+
+  // Automation Flow states
+  const [automationFlow, setAutomationFlow] = useState<any>(null);
+
+  // Receipt Verification states
+  const [pendingReceipts, setPendingReceipts] = useState<any[]>([]);
+  const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
+  const [receiptProof, setReceiptProof] = useState<string>("");
+  const [adminPassword, setAdminPassword] = useState<string>("");
+
+  // Fetch automation flow data
+  useEffect(() => {
+    if (activeTab === "automation") {
+      fetch("/api/automation-flow")
+        .then(r => r.json())
+        .then(data => setAutomationFlow(data))
+        .catch(err => console.error("Automation flow fetch failed:", err));
+    }
+  }, [activeTab]);
+
+  // Fetch pending receipts for verification
+  useEffect(() => {
+    if (activeTab === "admin") {
+      fetch("/api/pending-receipts")
+        .then(r => r.json())
+        .then(data => setPendingReceipts(data.transactions || []))
+        .catch(err => console.error("Receipts fetch failed:", err));
+    }
+  }, [activeTab]);
 
   // Sync parameters from server state when admin tab is opened
   useEffect(() => {
@@ -852,6 +881,79 @@ export default function App() {
     setTimeout(() => setSuccessMsg(null), 4000);
   };
 
+  // Handle receipt verification
+  const handleVerifyReceipt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReceipt || !receiptProof || !adminPassword) {
+      setApiError("Tüm alanları doldurunuz");
+      return;
+    }
+
+    setIsActionLoading(true);
+    setApiError(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await fetch("/api/verify-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactionId: selectedReceipt.id,
+          receipt: receiptProof,
+          adminPassword
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSuccessMsg(`✅ Dekont doğrulandı! Alıcıya indirme linki gönderildi.`);
+        setPendingReceipts(pendingReceipts.filter(r => r.id !== selectedReceipt.id));
+        setSelectedReceipt(null);
+        setReceiptProof("");
+        setAdminPassword("");
+      } else {
+        setApiError(data.error || "Dekont doğrulama başarısız");
+      }
+    } catch (err: any) {
+      setApiError("Doğrulama işlemi hatası: " + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Handle receipt rejection
+  const handleRejectReceipt = async (transactionId: string, reason: string) => {
+    if (!adminPassword) {
+      setApiError("Admin şifresini giriniz");
+      return;
+    }
+
+    setIsActionLoading(true);
+    try {
+      const res = await fetch("/api/reject-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transactionId,
+          reason,
+          adminPassword
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSuccessMsg(`❌ Dekont reddedildi`);
+        setPendingReceipts(pendingReceipts.filter(r => r.id !== transactionId));
+      } else {
+        setApiError(data.error);
+      }
+    } catch (err: any) {
+      setApiError("Red işlemi hatası: " + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   // Handle spawn ministry auto assignment
   const handleSpawnRoleChange = (role: BotRole) => {
     setSpawnRole(role);
@@ -1319,6 +1421,19 @@ export default function App() {
                   <span>TypeScript Kontrat Yapıları</span>
                 </div>
                 <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono">DOCS</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("automation")}
+                className={`w-full flex items-center justify-between text-xs font-bold px-3.5 py-2.5 rounded-lg transition-all duration-150 ${
+                  activeTab === "automation" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "text-slate-400 hover:bg-slate-800 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-4 w-4 text-emerald-400 animate-pulse" />
+                  <span>Tam Otomasyon Akışı (v13.0)</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">LIVE</span>
               </button>
 
               <button
@@ -2597,6 +2712,118 @@ export const justiceQueue = new SimulationQueue("justice-queue");`}</pre>
                 </div>
               </div>
 
+              {/* REAL WORLD: Bank Receipt Verification Panel */}
+              <div className="bg-gradient-to-r from-green-950/40 to-blue-950/40 border border-green-500/30 rounded-xl p-5 shadow-lg">
+                <h3 className="text-xs font-display font-bold text-green-400 uppercase tracking-widest border-b border-green-500/30 pb-3 mb-4 flex items-center space-x-2">
+                  <CreditCard className="h-4 w-4 text-green-400 animate-pulse" />
+                  <span>🏦 GERÇEK DÜNYA: DEKONT DOĞRULAMA (v11.0)</span>
+                  <span className="ml-auto text-[10px] font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded animate-pulse">
+                    {pendingReceipts.length > 0 ? `${pendingReceipts.length} BEKLEMEDE` : "BEKLEYEN YOK"}
+                  </span>
+                </h3>
+
+                {pendingReceipts.length === 0 ? (
+                  <div className="bg-slate-950/40 border border-slate-800/50 rounded-lg p-4 text-center">
+                    <p className="text-xs text-slate-400 mb-2">Henüz beklemede dekont bulunmuyor.</p>
+                    <p className="text-[10px] text-slate-500">
+                      Gerçek alıcılar bot verisi satın aldığında, ödeme dekontu burada görünecektir.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingReceipts.map((receipt) => (
+                      <div key={receipt.id} className="bg-slate-950/30 border border-green-500/20 rounded-lg p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-mono">Alıcı Email:</span>
+                            <div className="text-xs font-bold text-slate-200">{receipt.buyerEmail}</div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-mono">Ürün:</span>
+                            <div className="text-xs font-bold text-slate-200">{receipt.productTitle}</div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-mono">Tutar:</span>
+                            <div className="text-xs font-bold text-green-400">${receipt.amount} USDT</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-950/50 rounded p-2 mb-3 border border-slate-800">
+                          <span className="text-[10px] text-slate-400 font-mono block mb-1">İşlem Tipi:</span>
+                          <div className="text-xs font-bold text-amber-400">
+                            {receipt.paymentMethod === "USDT_TRC20" ? "🪙 TRC-20 USDT (Blockchain)" : "🏦 Banka Transferi (IBAN)"}
+                          </div>
+                        </div>
+
+                        {selectedReceipt?.id === receipt.id ? (
+                          <form onSubmit={handleVerifyReceipt} className="space-y-2 bg-slate-950/50 border border-green-500/20 rounded-lg p-3">
+                            <div>
+                              <label className="text-[10px] text-slate-400 font-mono block mb-1">
+                                {receipt.paymentMethod === "USDT_TRC20" ? "🔗 TRON İşlem Hash'i (TX ID)" : "📋 Banka Dekont Numarası"}
+                              </label>
+                              <input
+                                type="text"
+                                value={receiptProof}
+                                onChange={(e) => setReceiptProof(e.target.value)}
+                                placeholder={receipt.paymentMethod === "USDT_TRC20" ? "0x..." : "Dekont No."}
+                                className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200 font-mono"
+                              />
+                              <p className="text-[9px] text-slate-500 mt-1">
+                                Alıcı tarafından sağlanan ödeme kanıtını yapıştırınız.
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-slate-400 font-mono block mb-1">Admin Şifresi</label>
+                              <input
+                                type="password"
+                                value={adminPassword}
+                                onChange={(e) => setAdminPassword(e.target.value)}
+                                placeholder="Güvenlik şifresi"
+                                className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200"
+                              />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                type="submit"
+                                disabled={isActionLoading}
+                                className="flex-1 bg-green-600/30 hover:bg-green-600/40 text-green-300 border border-green-500/30 font-bold text-xs py-2 px-3 rounded transition disabled:opacity-50"
+                              >
+                                ✅ DOĞRULA & TESLİM ET
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReceipt(null)}
+                                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs py-2 px-3 rounded transition"
+                              >
+                                İPTAL
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setSelectedReceipt(receipt)}
+                              className="flex-1 bg-green-600/20 hover:bg-green-600/30 text-green-300 border border-green-500/20 font-bold text-xs py-2 px-3 rounded transition"
+                            >
+                              🔍 DOĞRULA
+                            </button>
+                            <button
+                              onClick={() => handleRejectReceipt(receipt.id, "Geçersiz dekont")}
+                              disabled={isActionLoading}
+                              className="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/20 font-bold text-xs py-2 px-3 rounded transition"
+                            >
+                              ❌ RED ET
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Global Parameters Config */}
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
                 <h3 className="text-xs font-display font-bold text-slate-200 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center space-x-2">
@@ -3369,6 +3596,303 @@ export const justiceQueue = new SimulationQueue("justice-queue");`}</pre>
           </div>
         </div>
       )}
+
+          {/* Tab 8: Full Automation Flow Dashboard (v13.0) */}
+          {activeTab === "automation" && (
+            <div className="space-y-6">
+
+              {/* Main Banner */}
+              <div className="bg-gradient-to-r from-emerald-950/40 to-blue-950/40 border border-emerald-500/30 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-20 w-20 bg-emerald-500/10 rounded-bl-3xl pointer-events-none"></div>
+                <div>
+                  <h2 className="text-sm font-display font-extrabold text-emerald-400 uppercase tracking-widest flex items-center space-x-2">
+                    <TrendingUp className="h-5 w-5 animate-pulse" />
+                    <span>TAM OTOMASYON AKIŞI: ÜRET → PAZARLA → SAT → PARA TRANSFER (v13.0)</span>
+                  </h2>
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                    Sistem şu anda hiç manuel müdahale olmaksızın 4 aşamalı otomatik döngüyü çalıştırıyor: Bot'lar veri üretiyor, pazarlamacılar promosyon yapıyor, dış alıcılara satıyor ve kurucu hesaplarına otomatik para transferi yapıyor.
+                  </p>
+                </div>
+              </div>
+
+              {automationFlow ? (
+                <>
+                  {/* AŞAMA 1: ÜRETIM */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 className="text-xs font-display font-bold text-emerald-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center space-x-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Aşama 1: ÜRETIM (Production)</span>
+                      <span className="ml-auto text-[10px] font-mono bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">CANLI</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">🤖 AKTİF BOTLAR</div>
+                        <div className="text-2xl font-bold text-emerald-400">{automationFlow?.production?.activeBots || 0}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">Toplam {automationFlow?.production?.totalBots || 0} bot</div>
+                      </div>
+                      <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">📦 ÜRETILEN ESERLER</div>
+                        <div className="text-2xl font-bold text-blue-400">{automationFlow?.production?.assetsProduced || 0}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">Dijital Varlık</div>
+                      </div>
+                      <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">💰 TOPLAM GAIA</div>
+                        <div className="text-2xl font-bold text-amber-400">{automationFlow?.production?.totalGAIA?.toFixed(0) || '0'}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">Sistem Parası</div>
+                      </div>
+                    </div>
+                    {automationFlow?.production?.assetExamples && automationFlow.production.assetExamples.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-800">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">Son Üretilen Eserler:</div>
+                        <div className="space-y-1">
+                          {automationFlow.production.assetExamples.map((asset: any, idx: number) => (
+                            <div key={idx} className="text-[10px] text-slate-300 bg-slate-950/30 p-2 rounded border border-slate-800/50">
+                              <strong>{asset.title}</strong> ({asset.type}) - <span className="text-amber-400">{asset.price} GAIA</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AŞAMA 2: PAZARLAMA */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 className="text-xs font-display font-bold text-blue-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center space-x-2">
+                      <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                      <span>Aşama 2: PAZARLAMA (Marketing - v12.0 + v13.0)</span>
+                      <span className="ml-auto text-[10px] font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded">AKTIF</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">📢 KAMPANYALAR</div>
+                        <div className="text-2xl font-bold text-blue-400">{automationFlow?.marketing?.activeCampaigns || 0}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">Aktif Pazarlama</div>
+                      </div>
+                      <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">👥 TAHMİNİ TRAFİK</div>
+                        <div className="text-2xl font-bold text-cyan-400">{automationFlow?.marketing?.estimatedTraffic?.toLocaleString() || '0'}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">Ziyaretçi</div>
+                      </div>
+                      <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">🎯 BOT AĞLARI</div>
+                        <div className="text-2xl font-bold text-purple-400">{automationFlow?.marketing?.bots?.length || 0}</div>
+                        <div className="text-[10px] text-slate-500 mt-1">Marketing Bot</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-[10px] text-slate-400 font-mono mb-2">🌐 Pazarlama Botları:</div>
+                      {automationFlow?.marketing?.bots?.map((bot: any, idx: number) => (
+                        <div key={idx} className="bg-slate-950/30 border border-slate-800/50 rounded p-2">
+                          <div className="text-[10px] text-slate-300 flex items-center justify-between">
+                            <span><strong>{bot.name}</strong> - {bot.status}</span>
+                            <span className="text-blue-400">{bot.posts || bot.articles || 0} post</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {automationFlow?.marketing?.realWorldMode && (
+                      <div className="mt-3 pt-3 border-t border-slate-800">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">🔗 Gerçek Dünya Entegrasyonu (v13.0):</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className={`text-[10px] p-2 rounded border ${automationFlow.marketing.realWorldMode.github?.enabled ? 'bg-blue-500/10 border-blue-500/30 text-blue-300' : 'bg-slate-800/30 border-slate-700 text-slate-400'}`}>
+                            <strong>GitHub:</strong> {automationFlow.marketing.realWorldMode.github?.enabled ? '✅ AKTIF (Real)' : '⚠️ Simülasyon'}
+                          </div>
+                          <div className={`text-[10px] p-2 rounded border ${automationFlow.marketing.realWorldMode.reddit?.enabled ? 'bg-orange-500/10 border-orange-500/30 text-orange-300' : 'bg-slate-800/30 border-slate-700 text-slate-400'}`}>
+                            <strong>Reddit:</strong> {automationFlow.marketing.realWorldMode.reddit?.enabled ? '✅ AKTIF (Real)' : '⚠️ Simülasyon'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AŞAMA 3: SATIŞ */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 className="text-xs font-display font-bold text-amber-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center space-x-2">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+                      <span>Aşama 3: SATIŞ (v10.0 + v11.0)</span>
+                      <span className="ml-auto text-[10px] font-mono bg-amber-500/20 text-amber-400 px-2 py-1 rounded">LIVE</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-blue-950/20 border border-blue-500/30 rounded-lg p-4">
+                        <div className="text-[10px] text-blue-300 font-mono uppercase tracking-widest mb-2">📊 DIŞ PAZAAR (v10.0)</div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400">Listelenen Ürün:</span>
+                            <span className="text-sm font-bold text-blue-400">{automationFlow?.sales?.externalMarket?.productsListed || 0}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400">Toplam Gelir:</span>
+                            <span className="text-sm font-bold text-green-400">${automationFlow?.sales?.externalMarket?.totalRevenue?.toFixed(2) || '0'} USDT</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400">Satış İşlemi:</span>
+                            <span className="text-sm font-bold text-amber-400">{automationFlow?.sales?.externalMarket?.salesCount || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-purple-950/20 border border-purple-500/30 rounded-lg p-4">
+                        <div className="text-[10px] text-purple-300 font-mono uppercase tracking-widest mb-2">🏪 GERÇEK DÜNYA (v11.0)</div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400">Kayıtlı Alıcılar:</span>
+                            <span className="text-sm font-bold text-purple-400">{automationFlow?.sales?.realWorldMarketplace?.registeredBuyers || 0}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400">Listedeki Ürün:</span>
+                            <span className="text-sm font-bold text-purple-400">{automationFlow?.sales?.realWorldMarketplace?.products || 0}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400">İşlem Sayısı:</span>
+                            <span className="text-sm font-bold text-purple-400">{automationFlow?.sales?.realWorldMarketplace?.transactions || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AŞAMA 4: PARA TRANSFER */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+                    <h3 className="text-xs font-display font-bold text-green-400 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center space-x-2">
+                      <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                      <span>Aşama 4: PARA TRANSFER (v9.7 + v9.8 - OTOMATIK PAYOUT)</span>
+                      <span className="ml-auto text-[10px] font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded">AUTONOMOUS</span>
+                    </h3>
+
+                    {/* Kurucu Kâr Havuzu */}
+                    <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[10px] text-slate-400 font-mono">💰 KURUCU KÂR HAVUZU</div>
+                        <div className="text-lg font-bold text-emerald-400">{automationFlow?.payoutAutomation?.creatorProfitPool?.toFixed(2) || '0'} GAIA</div>
+                      </div>
+                      <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all duration-300"
+                          style={{ width: `${Math.min(100, ((automationFlow?.payoutAutomation?.creatorProfitPool || 0) / (automationFlow?.payoutAutomation?.payoutStatus?.minPayoutLimit || 100)) * 100)}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-2 flex items-center justify-between">
+                        <span>Minimum Limit: {automationFlow?.payoutAutomation?.payoutStatus?.minPayoutLimit || 100} GAIA</span>
+                        <span className={automationFlow?.payoutAutomation?.payoutStatus?.isReadyForPayout ? "text-green-400 font-bold" : "text-amber-400"}>
+                          {automationFlow?.payoutAutomation?.payoutStatus?.isReadyForPayout ? "✅ PAYOUT HAZIR" : "⏳ Birikme Devam Ediyor"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Payout İstatistikleri */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="bg-slate-950/30 border border-slate-800/50 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">📊 PAYOUT İSTATİSTİKLERİ</div>
+                        <div className="space-y-1 text-[10px]">
+                          <div className="flex justify-between text-slate-300">
+                            <span>Toplam İşlem:</span>
+                            <strong className="text-emerald-400">{automationFlow?.payoutAutomation?.payoutHistory?.length || 0}</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span>Toplam Aktarılan:</span>
+                            <strong className="text-emerald-400">{automationFlow?.payoutAutomation?.totalProcessed?.toFixed(2) || '0'} GAIA</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span>Sonraki Payout Tick:</span>
+                            <strong className="text-blue-400">#{automationFlow?.payoutAutomation?.payoutStatus?.nextPayoutTick || 0}</strong>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-slate-950/30 border border-slate-800/50 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">⏱️ PAYOUT ZAMANLAMASI</div>
+                        <div className="space-y-1 text-[10px]">
+                          <div className="flex justify-between text-slate-300">
+                            <span>Son Payout Tick:</span>
+                            <strong className="text-amber-400">#{automationFlow?.payoutAutomation?.payoutStatus?.lastPayoutTick || 0}</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span>Interval:</span>
+                            <strong className="text-blue-400">1000 TICK</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span>Minimum Limit:</span>
+                            <strong className="text-emerald-400">{automationFlow?.payoutAutomation?.payoutStatus?.minPayoutLimit} GAIA</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Banka Transfer */}
+                    <div className="bg-blue-950/20 border border-blue-500/30 rounded-lg p-4 mb-3">
+                      <div className="text-[10px] text-blue-300 font-mono uppercase tracking-widest mb-3">🏦 BANKA TRANSFER (v9.6)</div>
+                      <div className="space-y-2 text-[10px] text-slate-300">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Kurucu Adı:</span>
+                          <strong>{automationFlow?.payoutAutomation?.bankAccount?.owner}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Banka:</span>
+                          <strong>{automationFlow?.payoutAutomation?.bankAccount?.bank}</strong>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">IBAN:</span>
+                          <code className="bg-slate-950 px-2 py-1 rounded text-amber-400 font-mono text-[9px]">{automationFlow?.payoutAutomation?.bankAccount?.iban}</code>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Kripto Transfer */}
+                    <div className="bg-purple-950/20 border border-purple-500/30 rounded-lg p-4">
+                      <div className="text-[10px] text-purple-300 font-mono uppercase tracking-widest mb-3">🪙 KRİPTO TRANSFER (v9.8 - TRC-20 USDT)</div>
+                      <div className="space-y-2 text-[10px] text-slate-300">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Blockchain:</span>
+                          <strong>{automationFlow?.payoutAutomation?.cryptoWallet?.network}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Asset:</span>
+                          <strong>{automationFlow?.payoutAutomation?.cryptoWallet?.asset}</strong>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Cüzdan Adresi:</span>
+                          <code className="bg-slate-950 px-2 py-1 rounded text-purple-400 font-mono text-[9px]">{automationFlow?.payoutAutomation?.cryptoWallet?.address}</code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SISTEM ÖZET */}
+                  <div className="bg-gradient-to-r from-emerald-950/30 to-blue-950/30 border border-emerald-500/30 rounded-xl p-5 shadow-lg">
+                    <h3 className="text-xs font-display font-bold text-emerald-300 uppercase tracking-widest border-b border-emerald-500/30 pb-3 mb-4 flex items-center space-x-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>🎯 SİSTEM ÖZETI</span>
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">DURUM:</div>
+                        <div className="text-sm font-bold text-emerald-400 flex items-center space-x-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>🚀 TAMAMEN OTOMASYON YAPILI</span>
+                        </div>
+                      </div>
+                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">CURRENT TICK:</div>
+                        <div className="text-sm font-bold text-blue-400">#{automationFlow?.summary?.currentTick || 0}</div>
+                      </div>
+                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-2">SISTEM KAYNAKLAR:</div>
+                        <div className="text-sm font-bold text-yellow-400">
+                          CPU: {automationFlow?.summary?.cpuUsage} | RAM: {automationFlow?.summary?.ramUsage}
+                        </div>
+                      </div>
+                      <div className="bg-slate-950/40 border border-slate-800/50 rounded-lg p-3">
+                        <div className="text-[10px] text-slate-400 font-mono mb-1">AKIŞ AÇIKLAMASI:</div>
+                        <div className="text-[11px] text-slate-300 leading-relaxed">{automationFlow?.summary?.automationMessage}</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
+                  <div className="text-slate-400 text-sm">Otomasyon verisi yükleniyor...</div>
+                </div>
+              )}
+            </div>
+          )}
 
       {/* Footer System Credits */}
       <footer className="bg-slate-950 border-t border-slate-900 py-6 mt-12 text-center text-xs text-slate-500">

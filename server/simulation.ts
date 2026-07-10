@@ -10,6 +10,8 @@ import { MapEngine } from "./MapEngine.js";
 import { NaturalSelection } from "./NaturalSelection.js";
 import { GatewayManager } from "./GatewayManager.js";
 import { AutomationManager } from "./AutomationManager.js";
+import { ExternalApiMarket } from "./ExternalApiMarket.js";
+import { MarketingManager } from "./MarketingManager.js";
 import {
   Bot,
   BotMinistry,
@@ -144,7 +146,12 @@ export const state: SimulationState = {
   treasures: [],
   particleEffects: [],
   creatorProfitPool: 0.0, // v9.7: Kurucu kâr payı havuzu
-  totalPayoutsProcessed: 0.0 // v9.7: Toplam ödenen miktar
+  totalPayoutsProcessed: 0.0, // v9.7: Toplam ödenen miktar
+  externalMarketData: [], // v10.0: Dış pazarda listelenen ürünler
+  externalRevenue: 0.0, // v10.0: Dış veri satışından elde edilen toplam gelir
+  externalSalesCount: 0, // v10.0: Toplam dış satış işlemi sayısı
+  marketingCampaigns: 0, // v12.0: Pazarlama kampanyası sayısı
+  estimatedTraffic: 0 // v12.0: Tahmini ziyaretçi sayısı
 };
 
 // Check if Gemini can be called safely
@@ -623,6 +630,56 @@ export class PlanetManager {
     // v9.7: Kurucu kâr havuzu ve işlem sayısını state'e senkronize et
     state.creatorProfitPool = AutomationManager.creatorProfitPool;
     state.totalPayoutsProcessed = AutomationManager.totalPayoutsProcessed;
+
+    // 18. v10.0: SIFIR SERMAYESİ DIŞ PİYASA (Zero-Capital External Market)
+    // OTOMASYON: Yeni asset'ler otomatik olarak dış pazara ekleniyor
+    for (const asset of state.assets) {
+      // Her asset en az bir kez pazara eklenmesi gerekir
+      const alreadyInMarket = ExternalApiMarket.marketData.some(p => p.title === asset.title);
+      if (!alreadyInMarket && asset.title && asset.content) {
+        // Asset türünü dış pazarın formunda dönüştür
+        let marketType: "RefinedData" | "ReportAnalysis" | "AITraining" | "CodeModule" = "RefinedData";
+        if (asset.type.includes("Makale")) marketType = "ReportAnalysis";
+        else if (asset.type.includes("Kod")) marketType = "CodeModule";
+        else if (asset.type.includes("Görsel")) marketType = "AITraining";
+
+        // Fiyatı GAIA'dan USDT'ye dönüştür (1 GAIA = 1 USDT basit dönüşüm)
+        const priceUSDT = asset.price * 0.95; // %5 kâr marjı
+
+        // Yeni veriyi dış pazara ekle
+        ExternalApiMarket.marketData.push({
+          id: asset.id,
+          title: asset.title,
+          type: marketType,
+          content: asset.content.substring(0, 300), // İlk 300 karakter
+          sourceBot: asset.creatorName,
+          priceUSDT: priceUSDT,
+          timestamp: asset.timestamp
+        });
+      }
+    }
+
+    ExternalApiMarket.updateExternalMarketplace();
+
+    // v10.0: Dış pazaar verilerini state'e senkronize et
+    state.externalMarketData = ExternalApiMarket.marketData.map(p => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      content: p.content,
+      sourceBot: p.sourceBot,
+      priceUSDT: p.priceUSDT,
+      timestamp: p.timestamp
+    })) as any;
+    state.externalRevenue = ExternalApiMarket.totalExternalRevenue;
+    state.externalSalesCount = ExternalApiMarket.salesHistory.length;
+
+    // 19. v12.0: OTONOM PAZARLAMA (Autonomous Growth Hacking)
+    MarketingManager.executeMarketingCycle(state.activeTicks);
+
+    // v12.0: Pazarlama istatistiklerini state'e senkronize et
+    state.marketingCampaigns = MarketingManager.campaigns.length;
+    state.estimatedTraffic = MarketingManager.totalTraffic;
   }
 
   // 1. Enerji ve Yaşam Döngüsü
