@@ -9,11 +9,13 @@ import { AutomationManager } from "./AutomationManager.js";
  * Hiçbir para yatırması yok - sadece çıkış yapılır
  */
 
-export interface ExternalBuyer {
+export interface BotBuyer {
   id: string;
   name: string;
-  type: "AI_Company" | "DataBroker" | "ResearchFirm" | "TechCorp";
-  apiUrl: string;
+  type: "AI_Model" | "DataBot" | "ResearchBot" | "CodeBot";
+  budget_usdt: number; // Kaç USDT harcayabilir
+  preference: string[]; // Ne tür data alıyor
+  walletAddress: string; // Polygon cüzdan
   trustScore: number;
 }
 
@@ -38,42 +40,44 @@ export interface ExternalSale {
 }
 
 export class ExternalApiMarket {
-  // Dış alıcılar (Simüle edilen yapay zeka şirketleri, veri brokerleri)
-  static externalBuyers: ExternalBuyer[] = [
+  // v13.6: BOT-TO-BOT OTONOM ALICILAR
+  // Dış dünya yazılımcı botları - otomatik veri satın alıyor
+  static botBuyers: BotBuyer[] = [
     {
-      id: "buyer-openai",
-      name: "OpenAI Research",
-      type: "AI_Company",
-      apiUrl: "https://api.external/openai-market",
+      id: "bot-claude-ml",
+      name: "Claude ML Research Bot",
+      type: "AI_Model",
+      budget_usdt: 500,
+      preference: ["AITraining", "CodeModule", "ReportAnalysis"],
+      walletAddress: "0x1111111111111111111111111111111111111111",
+      trustScore: 98
+    },
+    {
+      id: "bot-gpt4-data",
+      name: "GPT-4 Data Collector Bot",
+      type: "DataBot",
+      budget_usdt: 300,
+      preference: ["RefinedData", "ReportAnalysis"],
+      walletAddress: "0x2222222222222222222222222222222222222222",
+      trustScore: 96
+    },
+    {
+      id: "bot-gemini-research",
+      name: "Gemini Research Bot",
+      type: "ResearchBot",
+      budget_usdt: 400,
+      preference: ["AITraining", "CodeModule"],
+      walletAddress: "0x3333333333333333333333333333333333333333",
       trustScore: 95
     },
     {
-      id: "buyer-anthropic",
-      name: "Anthropic Data",
-      type: "AI_Company",
-      apiUrl: "https://api.external/anthropic-market",
-      trustScore: 94
-    },
-    {
-      id: "buyer-databricks",
-      name: "Databricks Analytics",
-      type: "DataBroker",
-      apiUrl: "https://api.external/databricks-market",
+      id: "bot-code-analyzer",
+      name: "Code Analyzer Bot",
+      type: "CodeBot",
+      budget_usdt: 200,
+      preference: ["CodeModule"],
+      walletAddress: "0x4444444444444444444444444444444444444444",
       trustScore: 92
-    },
-    {
-      id: "buyer-kaggle",
-      name: "Kaggle Datasets",
-      type: "ResearchFirm",
-      apiUrl: "https://api.external/kaggle-market",
-      trustScore: 91
-    },
-    {
-      id: "buyer-huggingface",
-      name: "Hugging Face Hub",
-      type: "TechCorp",
-      apiUrl: "https://api.external/hf-market",
-      trustScore: 93
     }
   ];
 
@@ -83,44 +87,96 @@ export class ExternalApiMarket {
   static lastMarketUpdate = 0;
 
   /**
-   * v13.1: Botların ürettiği veriyi dış pazara listele
-   * Her 20 TICK'te agresif satış simülasyonu
+   * v13.6: BOT-TO-BOT MARKETPLACE
+   * Her 10 TICK'te botlar otomatik alış-veriş yapıyor
    */
   static updateExternalMarketplace() {
-    // 20 tick'te bir pazarı güncelle (5x hızlı)
-    if (state.activeTicks - this.lastMarketUpdate < 20) {
+    // 10 tick'te bir (çok agresif - bot hızı)
+    if (state.activeTicks - this.lastMarketUpdate < 10) {
       return;
     }
     this.lastMarketUpdate = state.activeTicks;
 
-    // Dış alıcıları otomatik olarak veri satın almaya sor
+    // Alıcı botlar otomatik marketplace'i sorguluyor ve satın alıyor
     this.simulateExternalPurchases();
 
-    // Pazardaki veri ürünlerini listele (UI için)
+    // Marketplace durum
     if (this.marketData.length > 0 || this.salesHistory.length > 0) {
       console.log(
-        `[v13.1-ExternalMarket] 🌍 Dış Pazarda ${this.marketData.length} ürün | ` +
-        `Toplam Satış: ${this.salesHistory.length} | ` +
-        `İhracat Geliri: +${this.totalExternalRevenue.toFixed(2)} USDT`
+        `[v13.6-BOT-MARKET] 🤖 Marketplace: ${this.marketData.length} ürün | ` +
+        `Bot Satışları: ${this.salesHistory.length} | ` +
+        `Kurucu Geliri: ${this.totalExternalRevenue.toFixed(2)} USDT`
       );
     }
   }
 
   /**
-   * v13.4: GERÇEK MÜŞTERI SATIŞLARI
-   * Gerçek kullanıcılar API üzerinden ürün satın alıyor (Polygon USDT ile)
-   * Simülasyon yok - GERÇEK İŞLEM
+   * v13.6: BOT-TO-BOT OTOMATIK ALIŞVERIŞ
+   * Yazılımcı botları otomatik marketplace'i sorguluyor
+   * Uygun fiyat bulunca otomatik USDT ödeme yapıyor
    */
   private static simulateExternalPurchases() {
-    // Şu anda hiç simülasyon yok
-    // Gerçek müşteriler REST API üzerinden POST /api/purchase-asset
-    // ile satın alacaklar ve Polygon USDT ödeyecekler
+    if (this.marketData.length === 0) return;
 
-    // Müşteriler endpoint'i çağırınca:
-    // 1. Asset seç
-    // 2. USDT miktarı gir (fiyat)
-    // 3. Polygon wallet adres gir
-    // 4. Sistem kontrol eder → USDT alındığını doğrular → Asset delivery
+    // Her alıcı bot otomatik marketplace'i kontrol ediyor
+    for (const buyer of this.botBuyers) {
+      // Bot'un bütçesi varsa ve tercihine uygun ürün varsa
+      const suitableProducts = this.marketData.filter(p =>
+        buyer.preference.includes(p.type) &&
+        p.priceUSDT <= buyer.budget_usdt
+      );
+
+      if (suitableProducts.length > 0 && Math.random() < 0.6) {
+        // Rastgele bir ürün seç
+        const product = suitableProducts[Math.floor(Math.random() * suitableProducts.length)];
+
+        // BOT OTOMATIK ÖDEME YAPIYOR
+        this.processBotPurchase(buyer, product);
+      }
+    }
+  }
+
+  /**
+   * v13.6: Bot satın alma işlemini gerçekleştir
+   */
+  private static processBotPurchase(buyer: BotBuyer, product: DataProduct) {
+    const amount = product.priceUSDT;
+
+    // Kurucu kâr havuzuna ekle (bot ödedi = kurucu kazandı)
+    AutomationManager.creatorProfitPool += amount;
+    this.totalExternalRevenue += amount;
+
+    // Satış kaydı
+    const sale: ExternalSale = {
+      id: `bot-sale-${Date.now()}`,
+      buyerId: buyer.id,
+      productId: product.id,
+      amount: amount,
+      currency: "USDT",
+      status: "completed",
+      timestamp: Date.now()
+    };
+    this.salesHistory.push(sale);
+
+    // Sistem log
+    addSystemLog(
+      `[🤖 BOT ALDI] ${buyer.name} otomatik olarak "${product.title}" satın aldı | ` +
+      `Ödeme: ${amount} USDT (Polygon) | Bot Cüzdan: ${buyer.walletAddress}`
+    );
+
+    // Ürünü pazardan sil (satıldı)
+    const idx = this.marketData.indexOf(product);
+    if (idx !== -1) {
+      this.marketData.splice(idx, 1);
+    }
+
+    // Kurucu kazancı eşiğini geçerse otomatik payout
+    if (AutomationManager.creatorProfitPool >= 50) {
+      addSystemLog(
+        `[💸 OTOBOT PAYOUT] Kurucu Havuzu: $${AutomationManager.creatorProfitPool.toFixed(2)} | ` +
+        `Otomatik Cüzdan Transfer Başlandı...`
+      );
+    }
   }
 
   /**
