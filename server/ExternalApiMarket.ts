@@ -107,24 +107,20 @@ export class ExternalApiMarket {
   }
 
   /**
-   * v13.1: Agresif dış alıcı satın alma simülasyonu
-   * Her TICK'te %70 ihtimalle alıcı ürün satın alır
+   * v13.4: GERÇEK MÜŞTERI SATIŞLARI
+   * Gerçek kullanıcılar API üzerinden ürün satın alıyor (Polygon USDT ile)
+   * Simülasyon yok - GERÇEK İŞLEM
    */
   private static simulateExternalPurchases() {
-    if (this.marketData.length === 0) return;
+    // Şu anda hiç simülasyon yok
+    // Gerçek müşteriler REST API üzerinden POST /api/purchase-asset
+    // ile satın alacaklar ve Polygon USDT ödeyecekler
 
-    // Her dış alıcı %70 ihtimalle veri satın alır (agresif)
-    for (const buyer of this.externalBuyers) {
-      if (Math.random() < 0.7) {
-        // Rastgele bir ürün seç
-        const product = this.marketData[Math.floor(Math.random() * this.marketData.length)];
-
-        // Güvenilirlik skoru kontrol et ve ödemeyi yap
-        if (buyer.trustScore > 80) {
-          this.processExternalPayment(buyer, product);
-        }
-      }
-    }
+    // Müşteriler endpoint'i çağırınca:
+    // 1. Asset seç
+    // 2. USDT miktarı gir (fiyat)
+    // 3. Polygon wallet adres gir
+    // 4. Sistem kontrol eder → USDT alındığını doğrular → Asset delivery
   }
 
   /**

@@ -21,23 +21,12 @@ export class RealityBridgeMetrics {
 }
 
 export class PayoutManager {
-  // v13.1: Stripe yok - Doğrudan Polygon + IBAN otomatik transfer
-  // Sıfır Sermaye, Sıfır Risk Prensibine göre
+  // v13.4: SADECE POLYGON USDT - GERÇEK TRANSFER
+  // Stripe yok, IBAN yok - Sıfır Sermaye Prensibine göre
 
-  public static async triggerStripePayout(amountUSD: number, destinationBankAccount?: string): Promise<{ success: boolean; payoutId?: string; msg: string }> {
-    // Stripe simülasyon - gerçek transfer Polygon'dan yapılıyor
-    const iban = process.env.OWNER_IBAN || "TR320015700000000091775122";
-    const netAmount = amountUSD * 0.975;
-
-    addSystemLog(
-      `[OTOMATİK TRANSFER] 🏦 Banka Transferi Simüle: ${netAmount.toFixed(2)} TL → ${iban}`
-    );
-
-    return {
-      success: true,
-      payoutId: "sim-" + Math.random().toString(36).substring(7),
-      msg: `Simüle: $${netAmount.toFixed(2)} → IBAN`
-    };
+  public static async triggerStripePayout(amountUSD: number): Promise<{ success: boolean; payoutId?: string; msg: string }> {
+    // Stripe kaldırıldı - kullanmıyoruz
+    return { success: false, msg: "Stripe kaldırıldı. Polygon USDT kullanın." };
   }
 
 
