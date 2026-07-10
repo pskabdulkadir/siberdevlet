@@ -124,6 +124,11 @@ export interface SimulationState {
   evolutionGeneration?: number;
   ownerIban?: string;
   ownerCryptoWallet?: string;
+  ownerName?: string; // v9.6: Kurucu adı
+  ownerBank?: string; // v9.6: Kurucu bankası
+  ownerCryptoPrivateKey?: string; // v9.6: Kurucu kripto anahtarı
+  cryptoNetwork?: string; // v9.8: TRC-20 (TRON Network)
+  cryptoAsset?: string; // v9.8: USDT
   autoPayoutThreshold?: string; // "10" | "50" | "100" | "instant"
   financialStats?: {
     totalTrades: number;
@@ -161,4 +166,6 @@ export interface SimulationState {
     spawnTick: number;
     lifetime: number;
   }>;
+  creatorProfitPool?: number; // v9.7: Kurucu kâr payı havuzu
+  totalPayoutsProcessed?: number; // v9.7: Toplam ödenen miktar
 }

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: gaia-simulation
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.cjs
+    healthCheckPath: /health
+    envVars:
+      # ⚠️ Boşta bırakılabilir - Sistem otonom kurulum yapar
+      - key: PORT
+        value: "3000"
+      # Açık kaynak AI fallback
+      # - key: GEMINI_API_KEY
+      #   value: ""
+      # Merkez Bankası ayarları (otomatik oluşturulur)
+      # - key: OWNER_CRYPTO_WALLET
+      #   value: "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn"
+      # - key: OWNER_IBAN
+      #   value: ""
+      # Database (In-Memory mode varsayılan)
+      # - key: DATABASE_URL
+      #   value: ""

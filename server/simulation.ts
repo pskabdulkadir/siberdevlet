@@ -9,6 +9,7 @@ import { BotManager } from "./BotManager.js";
 import { MapEngine } from "./MapEngine.js";
 import { NaturalSelection } from "./NaturalSelection.js";
 import { GatewayManager } from "./GatewayManager.js";
+import { AutomationManager } from "./AutomationManager.js";
 import {
   Bot,
   BotMinistry,
@@ -124,8 +125,13 @@ export const state: SimulationState = {
   resilienceScore: 100,
   chaosEvents: 0,
   evolutionGeneration: 0,
-  ownerIban: process.env.OWNER_IBAN || "",
-  ownerCryptoWallet: process.env.OWNER_CRYPTO_WALLET || "",
+  ownerIban: process.env.OWNER_IBAN || "TR320015700000000091775122",
+  ownerCryptoWallet: process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn",
+  ownerName: process.env.OWNER_NAME || "Abdulkadir Kan",
+  ownerBank: process.env.OWNER_BANK || "QNB Finansbank",
+  ownerCryptoPrivateKey: process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn",
+  cryptoNetwork: process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)",
+  cryptoAsset: process.env.CRYPTO_ASSET || "USDT",
   autoPayoutThreshold: "instant",
   financialStats: {
     totalTrades: 0,
@@ -136,7 +142,9 @@ export const state: SimulationState = {
   },
   tradeRequests: [],
   treasures: [],
-  particleEffects: []
+  particleEffects: [],
+  creatorProfitPool: 0.0, // v9.7: Kurucu kâr payı havuzu
+  totalPayoutsProcessed: 0.0 // v9.7: Toplam ödenen miktar
 };
 
 // Check if Gemini can be called safely
@@ -608,6 +616,13 @@ export class PlanetManager {
 
     // 16. v9.5: GÜMRÜK OTONOM KORUMA (Gateway Protection)
     GatewayManager.evaluateBanRisk();
+
+    // 17. v9.7: OTONOM FINANSAL HASAT (Autonomous Financial Harvest)
+    AutomationManager.handleAutonomousPayouts(state.activeTicks);
+
+    // v9.7: Kurucu kâr havuzu ve işlem sayısını state'e senkronize et
+    state.creatorProfitPool = AutomationManager.creatorProfitPool;
+    state.totalPayoutsProcessed = AutomationManager.totalPayoutsProcessed;
   }
 
   // 1. Enerji ve Yaşam Döngüsü
@@ -1537,7 +1552,11 @@ function executeMarketTransactions(asset: DigitalAsset) {
     const creatorInstance = Object.assign(new CyberBot(creator.name, creator.role, creator.ministry), creator);
 
     const taxAmount = parseFloat((asset.price * (state.taxRate / 100)).toFixed(2));
-    const creatorShare = asset.price - taxAmount;
+
+    // v9.7: Kurucu kâr payı kesintisi (%30)
+    const creatorProfitCut = AutomationManager.captureCreatorProfit(asset.price);
+
+    const creatorShare = asset.price - taxAmount - creatorProfitCut;
 
     // Execute transfer
     if (buyerInstance.pay(creatorInstance, creatorShare, `"${asset.title}" dijital varlığını satın alma`)) {

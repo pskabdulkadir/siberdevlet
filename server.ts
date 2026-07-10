@@ -6,9 +6,82 @@ import { WebSocketServer } from "ws";
 import dotenv from "dotenv";
 import PDFDocument from "pdfkit";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType } from "docx";
+import crypto from "crypto";
 
 // Load environment variables
 dotenv.config();
+
+// v9.5: Otonom Ortam Kurulumu (Self-Setup Layer)
+function initializeAutonomousEnvironment() {
+  // 1. PORT: Render otomatik atar, yoksa 3000
+  process.env.PORT = process.env.PORT || "3000";
+  console.log(`[SİBER-KURULUM] 🌐 PORT ayarlandı: ${process.env.PORT}`);
+
+  // 2. DATABASE_URL: Gerçek PostgreSQL yoksa In-Memory Ledger
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes("fake")) {
+    console.log(
+      "[SİBER-KURULUM] 💾 Gerçek veritabanı bulunamadı. 'Bellek İçi (In-Memory) Ledger' aktif edildi. Kayıtlar RAM üzerinde tutuluyor."
+    );
+    process.env.DATABASE_URL = "local_memory_fallback";
+  }
+
+  // v9.6: KURUCU BİLGİLERİ (Abdulkadir Kan Entegrasyonu)
+  // 3. KURUCU IBAN: Kurucu banka hesabı (QNB Finansbank)
+  process.env.OWNER_IBAN = process.env.OWNER_IBAN || "TR320015700000000091775122";
+
+  // 4. KURUCU ADI
+  process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
+
+  // 5. KURUCU BANKASI
+  process.env.OWNER_BANK = process.env.OWNER_BANK || "QNB Finansbank";
+
+  // v9.8: TRC-20 USDT KRİPTO ENTEGRASYON
+  // 6. CRYPTO NETWORK: TRC-20 (TRON Ağı)
+  process.env.CRYPTO_NETWORK = process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)";
+
+  // 7. CRYPTO ASSET: USDT (Stabil Dolar)
+  process.env.CRYPTO_ASSET = process.env.CRYPTO_ASSET || "USDT";
+
+  // 8. KURUCU USDT CÜZDANı (TRC-20 Ağında)
+  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn";
+
+  // Eski uyumluluk (backward compatibility)
+  process.env.OWNER_CRYPTO_WALLET = process.env.OWNER_CRYPTO_ADDRESS;
+  process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_ADDRESS;
+
+  // 8. GEMINI_API_KEY: Açık kaynak AI fallback etkinleştir
+  if (!process.env.GEMINI_API_KEY) {
+    console.log(
+      "[SİBER-KURULUM] 🤖 GEMINI_API_KEY bulunmadı. Sistem ChatEverywhere + Ollama fallback'ine geçiliyor."
+    );
+  }
+
+  // v9.6: KURUCU ENTEGRASYON BAŞARISI
+  console.log(
+    `[SİBER-DEVLET] 👑 Kurucu Entegrasyonu Başarılı: ${process.env.OWNER_NAME} adına kayıtlı cüzdan ve ${process.env.OWNER_BANK} IBAN'ı siber ağa bağlandı.`
+  );
+  console.log(
+    `[SİBER-DEVLET] 🏦 Kurucu Banka Hesabı: ${process.env.OWNER_IBAN}`
+  );
+
+  // v9.8: TRC-20 USDT ENTEGRASYON LOGU
+  console.log(
+    `[SİBER-DEVLET] 🪙 v9.8 TRC-20 USDT Entegrasyonu: ${process.env.CRYPTO_ASSET} Cüzdanı Bağlandı`
+  );
+  console.log(
+    `[SİBER-DEVLET] 🔗 Network: ${process.env.CRYPTO_NETWORK}`
+  );
+  console.log(
+    `[SİBER-DEVLET] 💰 USDT Cüzdan Adresi: ${process.env.OWNER_CRYPTO_ADDRESS}`
+  );
+
+  console.log(
+    "[SİBER-KURULUM] ✅ Otonom Ortam Kurulumu Tamamlandı. Sistem çalışmaya hazır!"
+  );
+}
+
+// Uygulama başlamadan önce env setup'ı çalıştır
+initializeAutonomousEnvironment();
 
 import {
   state,
@@ -222,6 +295,18 @@ initAutoplay();
 // ==========================================
 // SIMULATION API ENDPOINTS (GET/POST API/*)
 // ==========================================
+
+// Health Check (Render & Load Balancer için)
+app.get(["/health", "/healthcheck"], (req, res) => {
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    version: "9.5",
+    activeBots: state.bots.length,
+    subsidyPool: state.subsidyPool
+  });
+});
 
 // Get complete simulation state (Supports English & Turkish aliases)
 app.get(["/api/simulation/state", "/api/simulasyon/durum", "/api/simülasyon/durum", "/api/simulasyon/state"], (req, res) => {
