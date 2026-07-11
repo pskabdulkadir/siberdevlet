@@ -521,6 +521,14 @@ export class PlanetManager {
   static async tick() {
     state.activeTicks++;
 
+    // 1. Gümrük Kapısı Botu her zaman ACTIVE tut
+    const gatewayBot = state.bots.find(b => b.role === BotRole.GUMRUK_KAPISI);
+    if (gatewayBot && gatewayBot.status !== BotStatus.ACTIVE) {
+      gatewayBot.status = BotStatus.ACTIVE;
+      gatewayBot.energy = 100;
+      addSystemLog(`[AUTO-FIX] Gümrük Kapısı Botu başlatıldı (status: ACTIVE)`);
+    }
+
     // 1. Recharging Idle and Recovering Bots
     for (const b of state.bots) {
       if (b.status === BotStatus.RECYCLED) continue;
@@ -557,7 +565,8 @@ export class PlanetManager {
     await this.evaluateGatewayProxyRotation();
 
     // 9. ANAYASA 4: Kaos ve Kendi Kendini İyileştirme (Chaos & Self-Healing)
-    if (state.autoPlay && Math.random() < 0.04) {
+    // v13.8: Kaos azalt (0.04 → 0.01 = 75% daha az)
+    if (state.autoPlay && Math.random() < 0.01) {
       this.triggerChaosEvent(false);
     }
     if (state.resilienceScore !== undefined && state.resilienceScore < 100) {
@@ -571,8 +580,9 @@ export class PlanetManager {
     CyberWarfare.simulateCombat();
     CyberWarfare.maintainSoldierPatrol();
 
-    // Sabotaj tetiklendiğinde korsan spawn et
-    if (state.chaosEvents > 100 && Math.random() < 0.1) {
+    // Sabotaj tetiklendiğinde korsan spawn et (daha az)
+    // v13.8: Pirate spawn azalt (0.1 → 0.02)
+    if (state.chaosEvents > 200 && Math.random() < 0.02) {
       CyberWarfare.spawnPirateBot();
     }
 
