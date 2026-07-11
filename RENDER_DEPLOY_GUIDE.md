@@ -48,6 +48,18 @@ Free Plan: İyi (test için)
 Eğer gerçek API'ler kullanacaksan ekle:
 
 ```env
+# v13.10 Polygon RPC (ÖNEMLİ!)
+# Seçim 1: Public RPC (API key gerek yok) - ÖNERİLEN
+POLYGON_RPC_URL=https://rpc.ankr.com/polygon
+# Seçim 2: Alternatif public RPC
+# POLYGON_RPC_URL=https://polygon-rpc.com/
+# Seçim 3: Alchemy (senin key'inle)
+# POLYGON_RPC_URL=https://polygon-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
+
+# v13.6 Crypto Wallet (Önemli - Polygon USDT'yi almak için)
+OWNER_CRYPTO_ADDRESS=0x0f4Bdc545e811060c48B7f16029e5580cB70a680
+OWNER_CRYPTO_PRIVATE_KEY=0xdf4c7c572b0d855fb0c174f5d458524818789546ed0f73e912fa92bdc18fdf09
+
 # v13.0 GitHub API (Optional)
 GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxx
 
@@ -63,7 +75,6 @@ ADMIN_PASSWORD=SüperGüvenliŞifre123
 OWNER_NAME=Abdulkadir Kan
 OWNER_BANK=QNB Finansbank
 OWNER_IBAN=TR320015700000000091775122
-OWNER_CRYPTO_ADDRESS=TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn
 ```
 
 ### 5. Deploy

@@ -46,13 +46,13 @@ function initializeAutonomousEnvironment() {
   );
 
   // 10. POLYGON RPC URL KONTROL
-  if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("YOUR_KEY")) {
+  if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("YOUR_KEY") && !process.env.POLYGON_RPC_URL.includes("demo")) {
     console.log(
-      "[SİBER-KURULUM] 🔗 ✅ POLYGON RPC URL AYARLI - GERÇEK Polygon USDT transferleri aktif."
+      `[SİBER-KURULUM] 🔗 ✅ POLYGON RPC URL AYARLI - GERÇEK Polygon USDT transferleri aktif.\n    RPC: ${process.env.POLYGON_RPC_URL}`
     );
   } else {
     console.log(
-      "[SİBER-KURULUM] 🔗 ⚠️ POLYGON_RPC_URL eksik. Polygon transferleri simüle edilecektir."
+      "[SİBER-KURULUM] 🔗 ⚠️ POLYGON_RPC_URL eksik veya demo. Public Polygon RPC fallback: https://rpc.ankr.com/polygon"
     );
   }
 
