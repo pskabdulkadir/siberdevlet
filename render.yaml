@@ -15,7 +15,7 @@ services:
         value: "file:./data_fake"
       # Polygon USDT - Canlı para transfer
       - key: POLYGON_RPC_URL
-        value: "https://rpc.ankr.com/polygon"
+        value: "https://polygon-rpc.com"
       - key: OWNER_CRYPTO_ADDRESS
         value: "0x0f4Bdc545e811060c48B7f16029e5580cB70a680"
       - key: OWNER_CRYPTO_PRIVATE_KEY
