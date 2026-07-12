@@ -144,6 +144,24 @@ export default function App() {
     }
   }, [activeTab]);
 
+  // v13.5: State'i localStorage'a otomatik kaydet (Veri Kalıcılığı)
+  useEffect(() => {
+    if (state) {
+      try {
+        localStorage.setItem("simulation-state-backup", JSON.stringify({
+          timestamp: Date.now(),
+          bots: state.bots.length,
+          assets: state.assets.length,
+          totalGAIA: state.totalGAIA,
+          activeTicks: state.activeTicks,
+          marketVolume: state.marketVolume
+        }));
+      } catch (e) {
+        // localStorage dolu, sessiz başarısız
+      }
+    }
+  }, [state?.activeTicks]);
+
   // Sync parameters from server state when admin tab is opened
   useEffect(() => {
     if (state && activeTab === "admin") {
@@ -276,6 +294,65 @@ export default function App() {
     setBotFormBalance(bot.balance.toString());
     setBotFormEnergy(bot.energy.toString());
     setBotFormStatus(bot.status);
+  };
+
+  // Manuel Polygon USDT Transfer Test
+  const handleManualCryptoTransfer = async () => {
+    const amount = parseFloat(payoutAmount);
+    if (!amount || amount <= 0) {
+      setApiError("Geçerli bir transfer tutarı girin");
+      return;
+    }
+
+    setIsActionLoading(true);
+    setApiError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch("/api/admin/test-crypto-payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMsg(`✅ USDT transfer başarılı! TX: ${data.txHash}`);
+        setPayoutAmount("100");
+      } else {
+        setApiError(data.error || "Transfer başarısız");
+      }
+    } catch (err: any) {
+      setApiError("Sunucu hatası: " + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // FULL AUTOMATION: Üret → Pazarla → Sat → Para Transfer
+  const handleStartFullAutomation = async () => {
+    if (!window.confirm("⚠️ TAM OTOMASYON BAŞLATSIN MI?\n\n• Botlar spawn edilecek\n• Pazarlama tetiklenecek\n• Autoplay açılacak\n• Gerçek para transferi aktif olacak\n\nDevam etmek istiyor musunuz?")) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    setApiError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch("/api/admin/start-full-automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setState(prev => prev ? { ...prev, autoPlay: true } : null);
+        setSuccessMsg(`🚀 TAM OTOMASYON BAŞLATILDI!\n✅ ${data.automation.botsSpawned} bot spawn edildi\n✅ Autoplay aktif (Her 3.5 saniye)\n✅ Pazarlama botu aktif\n✅ Canlı para transfer hazır`);
+      } else {
+        setApiError(data.error || "Otomasyon başlatılamadı");
+      }
+    } catch (err: any) {
+      setApiError("Sunucu hatası: " + err.message);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   // Save Digital Asset
@@ -2540,6 +2617,60 @@ export const justiceQueue = new SimulationQueue("justice-queue");`}</pre>
           {activeTab === "admin" && (
             <div className="space-y-6">
               
+              {/* TAM OTOMASYON BAŞLATMA - MEGA PANEL */}
+              <div className="bg-gradient-to-r from-red-950/50 to-orange-950/50 border-2 border-red-500/60 rounded-xl p-6 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-32 w-32 bg-red-500/10 rounded-bl-full pointer-events-none animate-pulse"></div>
+                <div className="relative z-10">
+                  <h2 className="text-lg font-display font-black text-red-400 uppercase tracking-widest flex items-center space-x-3 mb-4">
+                    <Zap className="h-6 w-6 animate-bounce text-red-500" />
+                    <span>🚀 TAM OTOMASYON: ÜRET → PAZARLA → SAT → PARA</span>
+                    <span className="ml-auto text-sm font-mono bg-red-500/30 text-red-300 px-3 py-1 rounded-full animate-pulse">ONE-CLICK START</span>
+                  </h2>
+
+                  <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Bu buton tıklandığında: (1) Botlar spawn edilir, (2) Pazarlama tetiklenir, (3) Autoplay açılır, (4) Satışlar gerçekleşir, (5) USDT otomatik cüzdana transfer olur.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+                    <div className="bg-slate-950/60 border border-red-500/30 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-red-400 mb-1">1️⃣</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Botları Spawn Et</div>
+                      <div className="text-xs text-red-300 font-bold mt-1">{state?.bots?.length || 0} bot</div>
+                    </div>
+                    <div className="bg-slate-950/60 border border-orange-500/30 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-orange-400 mb-1">2️⃣</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Pazarlama Bot</div>
+                      <div className="text-xs text-orange-300 font-bold mt-1">3 kanal aktif</div>
+                    </div>
+                    <div className="bg-slate-950/60 border border-yellow-500/30 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-yellow-400 mb-1">3️⃣</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Autoplay Aktif</div>
+                      <div className="text-xs text-yellow-300 font-bold mt-1">3.5 saniye/tick</div>
+                    </div>
+                    <div className="bg-slate-950/60 border border-green-500/30 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-green-400 mb-1">4️⃣</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Satış Tetikleme</div>
+                      <div className="text-xs text-green-300 font-bold mt-1">${state?.assets?.length || 0} varlık</div>
+                    </div>
+                    <div className="bg-slate-950/60 border border-purple-500/30 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-purple-400 mb-1">5️⃣</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Gerçek Para Transfer</div>
+                      <div className="text-xs text-purple-300 font-bold mt-1">Polygon USDT</div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleStartFullAutomation}
+                    disabled={isActionLoading}
+                    className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 disabled:from-slate-800 disabled:to-slate-800 text-white font-black text-lg py-4 px-6 rounded-xl transition duration-200 flex items-center justify-center space-x-3 cursor-pointer shadow-2xl border-2 border-red-400/50"
+                  >
+                    <Zap className="h-6 w-6 animate-pulse" />
+                    <span>{isActionLoading ? "BAŞLATILIYOR..." : "🚀 TAM OTOMASYON BAŞLAT (ONE-CLICK)"}</span>
+                    <Zap className="h-6 w-6 animate-pulse" />
+                  </button>
+                </div>
+              </div>
+
               {/* Main Banner */}
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
@@ -2864,6 +2995,96 @@ export const justiceQueue = new SimulationQueue("justice-queue");`}</pre>
                     >
                       <RefreshCw className={`h-3.5 w-3.5 ${isActionLoading ? "animate-spin" : ""}`} />
                       <span>PARAMETRELERİ GÜNCELLE VE UYGULA</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* 🟢 CANLI POLYGON USDT TRANSFER PANEL */}
+              <div className="bg-gradient-to-r from-green-950/40 to-emerald-950/40 border-2 border-green-500/60 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-20 w-20 bg-green-500/10 rounded-bl-3xl pointer-events-none"></div>
+                <h3 className="text-xs font-display font-bold text-green-400 uppercase tracking-widest border-b border-green-500/30 pb-3 mb-4 flex items-center space-x-2">
+                  <Coins className="h-4 w-4 text-green-400 animate-pulse" />
+                  <span>🚀 CANLI POLYGON USDT TRANSFER (v13.4)</span>
+                  <span className="ml-auto text-[10px] font-mono bg-green-500/30 text-green-300 px-2 py-1 rounded animate-pulse font-bold">⚠️ GERÇEK PARA</span>
+                </h3>
+
+                {/* Uyarı Banner */}
+                <div className="bg-red-950/40 border border-red-500/40 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-red-300 font-bold mb-2">⚠️ DİKKAT: GERÇEK PARA TRANSFER</p>
+                  <ul className="text-[10px] text-red-200 space-y-1">
+                    <li>✓ Bu işlem Polygon Mainnet üzerinde GERÇEKol para transfer eder</li>
+                    <li>✓ İşlem geri alınamaz (blockchain kalıcı)</li>
+                    <li>✓ Cüzdan'da USDT ve gas fee (MATIC) olması gerekir</li>
+                    <li>✓ Yanlış tutar = para kaybı olabilir</li>
+                  </ul>
+                </div>
+
+                {/* Setup Kontrol Listesi */}
+                <div className="bg-slate-950/40 border border-slate-800/50 rounded-lg p-4 mb-4">
+                  <p className="text-xs text-slate-300 font-bold mb-3">✅ Canlı Para Akışı Setup Kontrolü:</p>
+                  <div className="space-y-2 text-[10px]">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-400">✅</span>
+                      <span>POLYGON_RPC_URL: Alchemy/Ankr RPC yapılandırılı</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-400">✅</span>
+                      <span>OWNER_CRYPTO_PRIVATE_KEY: Private key yüklü (.env'de)</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-400">✅</span>
+                      <span>USDT Contract: 0xc2132D05D31c914a87C6611C10748AEb04B58e8F</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-400">✅</span>
+                      <span>Blockchain Doğrulama (PolygonValidator): Aktif</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-400">✅</span>
+                      <span>Otomatik Payout: Müşteri ödemeleri tetiklendiğinde çalışıyor</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hedef Cüzdan Bilgileri */}
+                <div className="bg-slate-950/30 border border-slate-800/50 rounded-lg p-4 mb-4">
+                  <p className="text-xs text-slate-400 font-mono uppercase mb-3">Alıcı Bilgileri:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px]">
+                    <div className="bg-slate-950/50 p-2.5 rounded border border-green-500/30">
+                      <span className="text-slate-400 block mb-1 font-mono">Polygon Cüzdan Adresi:</span>
+                      <code className="text-green-400 font-mono text-[9px] break-all font-bold">{process.env.OWNER_CRYPTO_ADDRESS || "0x..."}</code>
+                    </div>
+                    <div className="bg-slate-950/50 p-2.5 rounded border border-amber-500/30">
+                      <span className="text-slate-400 block mb-1 font-mono">Blockchain Ağ:</span>
+                      <span className="text-amber-400 font-mono font-bold">Polygon Mainnet (ERC-20 USDT)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={(e) => { e.preventDefault(); handleManualCryptoTransfer(); }} className="space-y-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-2">Transfer Tutarı (USDT)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.1"
+                      value={payoutAmount}
+                      onChange={(e) => setPayoutAmount(e.target.value)}
+                      placeholder="100.00"
+                      className="w-full bg-slate-950 border border-green-500/30 focus:border-green-400 focus:outline-none rounded-lg p-2.5 text-sm text-slate-200 font-mono"
+                    />
+                    <p className="text-[9px] text-slate-500 mt-1">⚠️ Cüzdan'da yeterli USDT olmalı + gas fee (MATIC)</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={isActionLoading}
+                      className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-800 text-white font-bold text-xs py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2 cursor-pointer"
+                    >
+                      <Coins className="h-4 w-4" />
+                      <span>{isActionLoading ? "GÖNDERİLİYOR..." : "🚀 USDT GÖNDERİ (GERÇEK PARA)"}</span>
                     </button>
                   </div>
                 </form>

@@ -82,6 +82,7 @@ export interface DigitalAsset {
   sold: boolean;
   buyerId?: string;
   timestamp: number;
+  marketplace_id?: string; // v13.5: RealWorldGateway ürün ID'si (dış pazarda satış için)
 }
 
 export interface LedgerTransaction {

@@ -8,19 +8,34 @@ let prismaInitialized = false;
 function getPrismaClient(): PrismaClient | null {
   if (prismaInitialized) return prisma;
 
-  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes("fake")) {
+  // v13.5: SQLite DEFAULT - veriler kalıcı olsun
+  const dbUrl = process.env.DATABASE_URL || "file:./data.db";
+
+  if (dbUrl.includes("fake") || dbUrl.includes("undefined")) {
+    console.log("[DB] Fake/undefined database URL, in-memory mode");
     prismaInitialized = true;
     return null;
   }
 
   try {
     prisma = new PrismaClient({
-      errorFormat: "colorless"
+      errorFormat: "colorless",
+      log: [] // Silent mode (no logs)
     });
+
+    // Test connection
+    prisma.$connect().then(() => {
+      console.log(`[✅ DB] Prisma SQLite başarıyla bağlandı: ${dbUrl}`);
+    }).catch(err => {
+      console.warn(`[⚠️ DB] Prisma bağlantı hatası: ${err.message}. In-memory mode'a geçiliyor.`);
+      prisma = null;
+      prismaInitialized = true;
+    });
+
     prismaInitialized = true;
     return prisma;
   } catch (err) {
-    console.warn("Prisma initialization failed, running in memory-only mode");
+    console.warn(`[⚠️ DB] Prisma init başarısız: ${err}. In-memory mode.`);
     prismaInitialized = true;
     return null;
   }

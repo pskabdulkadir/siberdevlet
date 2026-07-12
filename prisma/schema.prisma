@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL", "postgresql://fake:fake@localhost/fake")
+  provider = "sqlite"
+  url      = env("DATABASE_URL", "file:./data.db")
 }
 
 model Bot {

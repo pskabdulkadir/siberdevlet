@@ -13,6 +13,7 @@ import { AutomationManager } from "./AutomationManager.js";
 import { ExternalApiMarket } from "./ExternalApiMarket.js";
 import { MarketingManager } from "./MarketingManager.js";
 import { AutomatedMarketing } from "./AutomatedMarketing.js";
+import { RealWorldGateway } from "./RealWorldGateway.js";
 import {
   Bot,
   BotMinistry,
@@ -513,7 +514,15 @@ export function seedInitialSimulation() {
   // v7.1: Borsa - Spekülatör Bot (Ticari dinamik için)
   state.bots.push(new CyberBot("Spekülatör-Tokyo", BotRole.SPEKULATÖR, BotMinistry.EKONOMI_FINANS, { speculation: 90 }));
 
-  addSystemLog(`12 temel Bot sınıfı ve 6 Bakanlık başarıyla kuruldu. v7.1: Siber Savunma ve Borsa sistemi entegre edildi.`);
+  // v13.5: RealWorldGateway'e test alıcı ekle (botlar satış yapabilsin)
+  try {
+    const testBuyerId = RealWorldGateway.registerBuyer("testbuyer@realworld.com", "Test Buyer Corp");
+    addSystemLog(`[🌐 MARKETPLACE] Test alıcısı kaydedildi: testbuyer@realworld.com (İD: ${testBuyerId.substring(0, 20)}...)`);
+  } catch (err) {
+    console.warn("Test alıcı kaydı başarısız:", err);
+  }
+
+  addSystemLog(`12 temel Bot sınıfı ve 6 Bakanlık başarıyla kuruldu. v7.1: Siber Savunma ve Borsa sistemi entegre edildi. v13.5: RealWorldGateway marketplace entegrasyonu aktif.`);
 }
 
 // PlanetManager - Siber-Dünya Anayasası ve Kurallarını denetleyen global yönetim sınıfı
@@ -1535,6 +1544,22 @@ async function processJobWithWorker(job: Job) {
       job.status = "completed";
 
       botInstance.log(`Kreatif varlık oluşturuldu ve siber pazara yollandı: "${title}"`);
+
+      // v13.5: Otomatik olarak RealWorldGateway'e (dış pazara) listeleme
+      try {
+        const productType = type === "Kod" ? "CodeModule" : type === "Makale" ? "DataSet" : "Report";
+        const productId = RealWorldGateway.listProductForSale(
+          asset.creatorId,
+          title,
+          `${type} - Botlar tarafından otomatik oluşturuldu | Kalite: ${asset.price} GAIA`,
+          productType as any,
+          Math.ceil(asset.price / 2) // Fiyat: GAIA'nın yarısı kadar USDT
+        );
+        asset.marketplace_id = productId; // Pazara linki kaydet
+        addSystemLog(`[🌐 DIS PAZAAR] "${title}" RealWorldGateway'e listelendi (Ürün ID: ${productId})`);
+      } catch (marketErr: any) {
+        console.warn(`[⚠️] Pazara listeleme hatası: ${marketErr.message}`);
+      }
 
       // Auto-trigger Broker Queue pricing
       economyQueue.add("Fiyatlandırma ve Pazara Sunma", {
