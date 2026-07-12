@@ -40,19 +40,22 @@ function initializeAutonomousEnvironment() {
   process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
   process.env.OWNER_CRYPTO_WALLET = process.env.OWNER_CRYPTO_ADDRESS;
 
-  // 9. POLYGON USDT - GERÇEK ÖDEMESİ
+  // 9. POLYGON USDT - SİMÜLASYON MODU (GÜVENLIK SEBEBİ)
   console.log(
-    "[SİBER-KURULUM] 🪙 POLYGON USDT GERÇEK ÖDEME - Müşteri ödemesi doğrudan Polygon USDT cüzdana"
+    "[SİBER-KURULUM] 🪙 POLYGON USDT - SİMÜLASYON MODUNDA (Gerçek transfer yapılmıyor)"
+  );
+  console.log(
+    "[SİBER-KURULUM] ⚠️  GÜVENLIK: Tüm crypto işlemleri simülasyon modunda. Private key kullanılmıyor."
   );
 
   // 10. POLYGON RPC URL KONTROL
   if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("YOUR_KEY") && !process.env.POLYGON_RPC_URL.includes("demo")) {
     console.log(
-      `[SİBER-KURULUM] 🔗 ✅ POLYGON RPC URL AYARLI - GERÇEK Polygon USDT transferleri aktif.\n    RPC: ${process.env.POLYGON_RPC_URL}`
+      `[SİBER-KURULUM] 🔗 ℹ️  POLYGON RPC URL ayarlanmış (simülasyon test için).\n    RPC: ${process.env.POLYGON_RPC_URL}`
     );
   } else {
     console.log(
-      "[SİBER-KURULUM] 🔗 ⚠️ POLYGON_RPC_URL eksik veya demo. Public Polygon RPC fallback: https://rpc.ankr.com/polygon"
+      "[SİBER-KURULUM] 🔗 ℹ️  POLYGON RPC fallback: https://polygon-rpc.com (simülasyon için)"
     );
   }
 
@@ -1061,7 +1064,12 @@ app.post("/api/admin/trade/instant-cashout", async (req, res) => {
   try {
     if (method === "crypto") {
       const result = await PayoutManager.triggerCryptoPayout(amt);
-      res.json({ success: result.success, msg: result.msg, state });
+      addSystemLog(`[⚠️ SİMÜLASYON] Manuel crypto payout tetiklendi (gerçek transfer yapılmıyor): ${amt} USDT`);
+      res.json({
+        success: false,
+        msg: `⚠️ PAYOUT SİMÜLASYON MODUNDA - Gerçek transfer yapılmıyor`,
+        state
+      });
     } else {
       const result = await PayoutManager.triggerStripePayout(amt);
       res.json({ success: result.success, msg: result.msg, state });
@@ -1782,6 +1790,7 @@ app.post("/api/purchase-asset", express.json(), async (req, res) => {
 });
 
 // v13.4: MANUEL POLYGON USDT TRANSFER TETİKLEME (TEST & YÖNETIM)
+// ⚠️ SİMÜLASYON MODUNDA - Gerçek blockchain işlem YAPILMIYOR
 app.post("/api/admin/test-crypto-payout", express.json(), async (req, res) => {
   const { amount } = req.body;
 
@@ -1793,36 +1802,33 @@ app.post("/api/admin/test-crypto-payout", express.json(), async (req, res) => {
   }
 
   console.log(`\n${'═'.repeat(80)}`);
-  console.log(`🚀 MANUEL POLYGON USDT TEST TRANSFER TETİKLENİYOR`);
-  console.log(`   Tutar: ${amount} USDT`);
+  console.log(`⚠️ POLYGON USDT TEST TRANSFER (SİMÜLASYON MODU)`);
+  console.log(`   Tutar: ${amount} USDT (GERÇEK DEĞİL)`);
   console.log(`   Alıcı: ${process.env.OWNER_CRYPTO_ADDRESS || "0x..."}`);
   console.log(`   Zaman: ${new Date().toLocaleString('tr-TR')}`);
+  console.log(`   Status: TEST - Blockchain'e yazılmıyor`);
   console.log(`${'═'.repeat(80)}\n`);
 
-  addSystemLog(`[🔵 TEST] Manuel Polygon USDT transfer başlatılıyor: ${amount} USDT`);
+  addSystemLog(`[⚠️ TEST-SIMÜLASYON] Polygon USDT payout tesitlendi (gerçek transfer DURDURULDU): ${amount} USDT`);
 
   try {
     const result = await PayoutManager.triggerCryptoPayout(amount);
 
-    if (result.success) {
-      addSystemLog(`[🟢 TEST-BAŞARILI] Manuel transfer başarılı: ${amount} USDT | TX: ${result.txHash}`);
-      res.json({
-        success: true,
-        message: "✅ Manual Polygon USDT transfer başarılı!",
-        txHash: result.txHash,
-        amount,
-        wallet: process.env.OWNER_CRYPTO_ADDRESS,
-        blockchainExplorer: `https://polygonscan.com/tx/${result.txHash}`
-      });
-    } else {
-      throw new Error(result.msg);
-    }
+    addSystemLog(`[ℹ️ TEST] Simülasyon payout tamamlandı - gerçek blockchain işlem yapılmadı`);
+    res.json({
+      success: false,
+      message: "⚠️ TEST MOD - Gerçek Polygon USDT transfer yapılmıyor",
+      amount,
+      wallet: process.env.OWNER_CRYPTO_ADDRESS,
+      status: "Simülasyon - Gerçek işlem değil",
+      note: "PayoutManager simülasyon modunda çalışıyor. Kontrol edilmesi gereken: Güvenli cüzdan, gerçek PK yok"
+    });
   } catch (error: any) {
-    addSystemLog(`[🔴 TEST-BAŞARISISIZ] Manuel transfer başarısız: ${error.message}`);
+    addSystemLog(`[🔴 TEST-HATA] Simülasyon payout hatası: ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
-      hint: "Polygon RPC URL ve private key'i kontrol edin"
+      status: "Simülasyon modunda hata"
     });
   }
 });
