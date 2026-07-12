@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { ethers } from "ethers";
+import crypto from "crypto";
 import { state, addSystemLog, RealityBridge, PatchLog } from "./simulation.js";
 
 export class RealityBridgeMetrics {
@@ -38,7 +39,13 @@ export class PayoutManager {
     const walletAddress = destinationWallet || state.ownerCryptoWallet || process.env.OWNER_CRYPTO_ADDRESS || "0xYourCryptoWalletAddressPlaceholder";
     const rpcUrl = process.env.POLYGON_RPC_URL;
 
-    addSystemLog(`[FİNANS] Polygon (USDT) kripto çekim köprüsü tetiklendi. Çekim Tutarı: ${amountUSD.toFixed(2)} USDT`);
+    // EMERGENCY PAUSE: Simülasyon modunda çalış - gerçek transfer yapma
+    // Sorunu: Private key sahibi cüzdan kendi cüzdanına transfer yapıyordu, bu da gas ücret harcıyor
+    // Duzeltme: Mantıksal validation yapılıyor ama gerçek blockchain işlem yapılmıyor
+
+    addSystemLog(`[⚠️ SIMÜLASYON] Polygon (USDT) kripto çekim - SİMÜLASYON MODUNDA (GERÇEK TRANSFER DURDURULDU)`);
+    addSystemLog(`   Tutar: ${amountUSD.toFixed(2)} USDT | Net: ${netAmount.toFixed(2)} USDT`);
+    addSystemLog(`   Alıcı: ${walletAddress}`);
 
     try {
       if (!rpcUrl || rpcUrl.includes("your-api-key")) {
@@ -48,46 +55,13 @@ export class PayoutManager {
         throw new Error("OWNER_CRYPTO_WALLET address is invalid or not configured.");
       }
 
-      addSystemLog(`[FİNANS] Web3 Bağlantısı kuruluyor: ${rpcUrl.substring(0, 30)}...`);
-      
-      // Setup connection to Polygon Network
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
-      
-      // Check if we have a wallet private key in environment variables to sign transaction
-      const privateKey = process.env.OWNER_CRYPTO_PRIVATE_KEY;
-      if (!privateKey) {
-        throw new Error("OWNER_CRYPTO_PRIVATE_KEY environment variable is required to execute smart contract 'withdraw' trigger.");
-      }
+      // Simülasyon: Random TX hash oluştur
+      const simulatedTxHash = `0x${crypto.randomBytes(32).toString('hex')}`;
 
-      const signer = new ethers.Wallet(privateKey, provider);
-      
-      addSystemLog(`[FİNANS] 0x... Akıllı Kontrat 'withdraw' fonksiyonu tetikleniyor...`);
-      
-      // Contract address for USDT on Polygon Mainnet
-      const contractAddress = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // Polygon USDT (0x.c213...)
-      // Minimal USDT transfer ABI
-      const contractAbi = [
-        "function transfer(address to, uint256 amount) returns (bool)",
-        "function balanceOf(address account) returns (uint256)"
-      ];
-      
-      const contract = new ethers.Contract(contractAddress, contractAbi, signer);
-      const amountWei = ethers.parseUnits(netAmount.toFixed(6), 6); // USDT uses 6 decimals
+      addSystemLog(`[🟡 SIMÜLASYON] Payout tetiklendi (gerçek transfer BLOKLANDı)`);
+      addSystemLog(`   Simülasyon TX: ${simulatedTxHash}`);
 
-      addSystemLog(`[🟢 CANLI TRANSFER] Transfer başlatıldı. Alıcı: ${walletAddress}`);
-
-      // Trigger the contract transaction
-      const tx = await contract.transfer(walletAddress, amountWei);
-      addSystemLog(`[🟡 BEKLEMEDE] İşlem onay kuyruğunda. Hash: ${tx.hash}`);
-      console.log(`\n${'═'.repeat(80)}`);
-      console.log(`🔗 POLYGON TX: https://polygonscan.com/tx/${tx.hash}`);
-      console.log(`${'═'.repeat(80)}\n`);
-
-      const receipt = await tx.wait();
-
-      addSystemLog(`[🟢 BAŞARILI] ✅ GERÇEK PARA AKTARIMI TAMAMLANDI! Tutar: ${netAmount.toFixed(2)} USDT | Hash: ${tx.hash}`);
-
-      // Update local state stats & Reality Bridge metrics
+      // Update local state stats - ama blockchain'e yazma
       if (state.financialStats) {
         state.financialStats.totalTrades += 1;
         state.financialStats.grossUSD += amountUSD;
@@ -95,35 +69,22 @@ export class PayoutManager {
         state.financialStats.totalCryptoPayouts = (state.financialStats.totalCryptoPayouts || 0) + netAmount;
       }
       RealityBridgeMetrics.blockchainTxCount++;
-      PatchLog.recordPatch("PayoutManager", "Polygon USDT Transfer",
-        `amount: ${amountUSD} USD (eski simülasyon)`,
-        `amount: ${netAmount} USDT (GERÇEKolygon TX: ${tx.hash})`);
 
-      console.log(`\n✅ GERÇEK PARA BAŞARILI İLE GÖNDERİLDİ!`);
+      console.log(`\n⚠️ SIMÜLASYON MODUNDA PAYOUT`);
       console.log(`   Cüzdan: ${walletAddress}`);
       console.log(`   Tutar: ${netAmount.toFixed(2)} USDT`);
-      console.log(`   TX Hash: ${tx.hash}`);
-      console.log(`   Block: ${receipt?.blockNumber}`);
-      console.log(`   Timestamp: ${new Date().toLocaleString('tr-TR')}`);
+      console.log(`   Simülasyon TX: ${simulatedTxHash}`);
+      console.log(`   Status: DURDURULDU - Kontrol et ve yapılandır\n`);
 
       return {
-        success: true,
-        txHash: tx.hash,
-        msg: `✅ GERÇEK PARA AKTARIMI: ${netAmount.toFixed(2)} USDT gönderildi. TX: ${tx.hash}`
+        success: false,
+        msg: `⚠️ PAYOUT DURDURULDU - Lütfen PayoutManager mantığını kontrol et. Gerçek transfer yapılmıyor.`
       };
 
     } catch (error: any) {
-      const warningMsg = `[🔴 HATA] Polygon Web3 işlemi başarısız: ${error.message}`;
+      const warningMsg = `[🔴 HATA] Payout işlemi başarısız: ${error.message}`;
       console.error(warningMsg);
-      addSystemLog(`[🔴 TRANSFER BAŞARISISIZ] ${error.message}`);
-
-      console.error(`\n${'═'.repeat(80)}`);
-      console.error(`❌ POLYGON USDT TRANSFER BAŞARISISIZ`);
-      console.error(`Sebep: ${error.message}`);
-      console.error(`Lütfen kontrol et:`);
-      console.error(`  1. POLYGON_RPC_URL doğru mu?`);
-      console.error(`  2. OWNER_CRYPTO_PRIVATE_KEY doğru mu?`);
-      console.error(`  3. Cüzdan'da USDT yeterli mi?`);
+      addSystemLog(`[🔴 PAYOUT BAŞARISISIZ] ${error.message}`);
       console.error(`${'═'.repeat(80)}\n`);
 
       return {
