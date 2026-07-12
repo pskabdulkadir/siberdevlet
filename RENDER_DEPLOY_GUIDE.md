@@ -58,7 +58,7 @@ POLYGON_RPC_URL=https://rpc.ankr.com/polygon
 
 # v13.6 Crypto Wallet (Önemli - Polygon USDT'yi almak için)
 OWNER_CRYPTO_ADDRESS=0x0f4Bdc545e811060c48B7f16029e5580cB70a680
-OWNER_CRYPTO_PRIVATE_KEY=0xdf4c7c572b0d855fb0c174f5d458524818789546ed0f73e912fa92bdc18fdf09
+OWNER_CRYPTO_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HEX_HERE (⚠️ Gizli - örnek değil!)
 
 # v13.0 GitHub API (Optional)
 GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxx

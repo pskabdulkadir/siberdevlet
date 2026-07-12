@@ -14,7 +14,7 @@ Aşağıdaki değişkenleri **confidential** olarak ekle:
 #### Variable 1: OWNER_CRYPTO_PRIVATE_KEY
 ```
 Key: OWNER_CRYPTO_PRIVATE_KEY
-Value: 0xdf4c7c572b0d855fb0c174f5d458524818789546ed0f73e912fa92bdc18fdf09
+Value: 0xYOUR_PRIVATE_KEY_HEX_HERE (⚠️ Gizli - GitHub'a push ETME!)
 Confidential: ✅ (Checkmark)
 ```
 
