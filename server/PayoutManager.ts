@@ -35,7 +35,7 @@ export class PayoutManager {
    */
   public static async triggerCryptoPayout(amountUSD: number, destinationWallet?: string): Promise<{ success: boolean; txHash?: string; msg: string }> {
     const netAmount = amountUSD * 0.985; // Deduct gas fee estimate & network fee
-    const walletAddress = destinationWallet || state.ownerCryptoWallet || process.env.OWNER_CRYPTO_WALLET || "0xYourCryptoWalletAddressPlaceholder";
+    const walletAddress = destinationWallet || state.ownerCryptoWallet || process.env.OWNER_CRYPTO_ADDRESS || "0xYourCryptoWalletAddressPlaceholder";
     const rpcUrl = process.env.POLYGON_RPC_URL;
 
     addSystemLog(`[FİNANS] Polygon (USDT) kripto çekim köprüsü tetiklendi. Çekim Tutarı: ${amountUSD.toFixed(2)} USDT`);
