@@ -92,7 +92,10 @@ export class StateManager {
         });
       }
     } catch (err) {
-      console.error("Bot persistence error:", err);
+      // Suppress Prisma table not found errors in in-memory mode
+      if (!String(err).includes("does not exist")) {
+        console.error("Bot persistence error:", err);
+      }
     }
   }
 
@@ -124,7 +127,10 @@ export class StateManager {
         });
       }
     } catch (err) {
-      console.error("Asset persistence error:", err);
+      // Suppress Prisma table not found errors in in-memory mode
+      if (!String(err).includes("does not exist")) {
+        console.error("Asset persistence error:", err);
+      }
     }
   }
 
@@ -155,7 +161,10 @@ export class StateManager {
         }
       }
     } catch (err) {
-      console.error("Transaction persistence error:", err);
+      // Suppress Prisma table not found errors in in-memory mode
+      if (!String(err).includes("does not exist")) {
+        console.error("Transaction persistence error:", err);
+      }
     }
   }
 
@@ -215,7 +224,10 @@ export class StateManager {
         }
       });
     } catch (err) {
-      console.error("SimulationMeta persistence error:", err);
+      // Suppress Prisma table not found errors in in-memory mode
+      if (!String(err).includes("does not exist")) {
+        console.error("SimulationMeta persistence error:", err);
+      }
     }
   }
 
