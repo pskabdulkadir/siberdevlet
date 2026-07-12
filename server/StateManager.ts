@@ -340,7 +340,13 @@ export class StateManager {
 
       addSystemLog(`[FastBoot] ✅ BAŞARILI: Veritabanından durum yüklendi! Tick #${state.activeTicks}, ${state.bots.length} bot, ${state.assets.length} varlık.`);
       return true;
-    } catch (err) {
+    } catch (err: any) {
+      // Suppress table-not-found errors in simulation mode (in-memory fallback active)
+      const errMsg = String(err);
+      if (errMsg.includes("does not exist") || errMsg.includes("P2021")) {
+        // Silent fail - in-memory fallback will handle it
+        return false;
+      }
       console.error("Database hydration error:", err);
       addSystemLog(`[FastBoot] ⚠️ Veritabanı yükleme hatası: ${(err as any).message}`);
       return false;
