@@ -1113,6 +1113,9 @@ export async function runSimulationTick() {
   }
 
   await PlanetManager.tick();
+
+  // v13.7: Otomatik Dış Dünya Satın Alma (Bot satışını tamamla → canlı para akışı)
+  RealWorldGateway.triggerAutoExternalBuyer();
 }
 
 // 2. Infrastructure tasks (Mimar Bot CPU/RAM quarantine action)
