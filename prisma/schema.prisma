@@ -20,7 +20,7 @@ model Bot {
   balance           Float
   performanceScore  Float
   createdTick       Int
-  logs              String[]
+  logs              String    @default("[]")
   
   // Skill Matrix
   skillExtraction   Float
@@ -78,8 +78,8 @@ model Job {
   queueName         String
   name              String
   status            String
-  data              Json
-  result            Json?
+  data              String    @default("{}")
+  result            String?
   progress          Float
   workerId          String?
   error             String?
@@ -123,7 +123,7 @@ model SimulationMeta {
 
 model BackupLog {
   id                String    @id @default(cuid())
-  snapshotData      Json
+  snapshotData      String
   backupSize        Int
   success           Boolean
   errorMessage      String?

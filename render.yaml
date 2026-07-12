@@ -18,9 +18,8 @@ services:
         value: "https://rpc.ankr.com/polygon"
       - key: OWNER_CRYPTO_ADDRESS
         value: "0x0f4Bdc545e811060c48B7f16029e5580cB70a680"
-      # Private key güvenli tutulmalı (Render Secret olarak ekle)
-      # - key: OWNER_CRYPTO_PRIVATE_KEY
-      #   sync: false
+      - key: OWNER_CRYPTO_PRIVATE_KEY
+        sync: false
       # Açık kaynak AI fallback
       # - key: GEMINI_API_KEY
       #   value: ""
