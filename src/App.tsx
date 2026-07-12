@@ -612,9 +612,19 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setState(data);
+        setApiError(null); // Clear error on success
+      } else {
+        // API error response
+        try {
+          const errorData = await res.json();
+          setApiError(errorData.error || `API Error: ${res.status}`);
+        } catch {
+          setApiError(`API Error: ${res.status} ${res.statusText}`);
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch simulation state:", err);
+      setApiError(`Connection error: ${err.message}`);
     }
   };
 

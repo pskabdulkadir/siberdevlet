@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { SimulationState, BotMinistry, BotStatus } from "../types";
 
 interface CyberWorldMapProps {
