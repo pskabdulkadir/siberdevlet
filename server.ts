@@ -1836,26 +1836,11 @@ app.post("/api/admin/start-full-automation", express.json(), async (req, res) =>
   addSystemLog(`[🔴 FULL AUTOMATION] Tam otomatik döngü başlatılıyor...`);
 
   try {
-    // 1. BOTLARI SPAWN ET
-    const botCounts = [3, 2, 2]; // 3 UretimBot, 2 VeriBot, 2 YoneticiBot
-    const botRoles = ["ÜRÜN_ÜRETİCİ", "VERİ_TOPLAYICI", "YÖNETİCİ"];
+    // 1. BOTLARI SPAWN ET - AutoSpawnController ile yapıldığından manual spawn kaldırılıyor
+    // Sistemin otomatik bot spawn mekanizması zaten açık (AutoSpawnController)
 
-    for (let i = 0; i < botRoles.length; i++) {
-      for (let j = 0; j < botCounts[i]; j++) {
-        const bot = new Bot(
-          `AutoBot-${botRoles[i]}-${j + 1}`,
-          botRoles[i] as BotRole,
-          BotMinistry.URETIM,
-          100,
-          100,
-          BotStatus.ACTIVE
-        );
-        state.bots.push(bot);
-      }
-    }
-
-    addSystemLog(`[✅ BOTLAR] ${state.bots.length} adet bot sisteme eklendi ve aktifleştirildi`);
-    console.log(`✅ ${state.bots.length} bot spawn edildi\n`);
+    addSystemLog(`[✅ BOTLAR] Otomatik spawn mekanizması zaten aktif. Yeni botlar otomatik oluşturulacak.`);
+    console.log(`✅ Bot spawn sistemi aktif (AutoSpawnController)\n`);
 
     // 2. PAZARLAMA BOTLARINI TETIKLE
     addSystemLog(`[✅ PAZARLAMA] 3 pazarlama botu tetikleniyor (GitHub, Reddit, Medium)`);
