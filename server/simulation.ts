@@ -1522,6 +1522,9 @@ async function processJobWithWorker(job: Job) {
         ? content.substring(0, maxContentSize) + "\n[...content truncated due to memory limits]"
         : content;
 
+      // v15.1: Instant pricing - set price BEFORE marketplace listing (not 0!)
+      const basePrice = Math.floor((15 + Math.random() * 25) * (1 + state.inflationRate / 100));
+
       const asset: DigitalAsset = {
         id: `asset-${crypto.randomBytes(4).toString("hex")}`,
         title: title.substring(0, 200), // Limit title too
@@ -1529,7 +1532,7 @@ async function processJobWithWorker(job: Job) {
         content: trimmedContent,
         creatorId: worker.id,
         creatorName: worker.name,
-        price: 0, // pricing will be set by broker bot
+        price: basePrice, // SET IMMEDIATELY - NOT 0!
         sold: false,
         timestamp: Date.now()
       };
