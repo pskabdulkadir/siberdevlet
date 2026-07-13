@@ -12,6 +12,17 @@ import { AdminPanel } from "./AdminPanel.js";
 const router = express.Router();
 
 /**
+ * GET /api/admin/test
+ * Debug - endpoints çalışıyor mu?
+ */
+router.get("/api/admin/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Admin endpoints aktif ve çalışıyor ✅"
+  });
+});
+
+/**
  * POST /api/admin/login
  * Admin girişi
  */
