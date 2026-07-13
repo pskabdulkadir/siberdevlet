@@ -90,7 +90,7 @@ router.get("/api/admin/dashboard", (req, res) => {
  * GET /api/admin/wallet-pool
  * Havuz bilgileri
  */
-router.get("/api/admin/wallet-pool", (req, res) => {
+router.get("/api/admin/wallet-pool", async (req, res) => {
   const sessionId = req.query.sessionId as string;
 
   if (!sessionId || !AdminPanel.verifySession(sessionId)) {
@@ -99,6 +99,11 @@ router.get("/api/admin/wallet-pool", (req, res) => {
       error: "Session geçersiz"
     });
   }
+
+  // DB'den en güncel veriyi yükle (failsafe)
+  await AdminPanel.loadWalletPoolFromDB().catch(err => {
+    console.error(`[⚠️ RELOAD HATASI] ${err.message}`);
+  });
 
   const poolStats = AdminPanel.getPoolStats();
   res.json({
