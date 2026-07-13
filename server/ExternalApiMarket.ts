@@ -61,7 +61,8 @@ export class ExternalApiMarket {
     this.lastMarketUpdate = state.activeTicks;
 
     // Alıcı botlar otomatik marketplace'i sorguluyor ve satın alıyor
-    this.simulateExternalPurchases();
+    // v22.0 CANLI MOD: Simüle bot alımları devre dışı bırakıldı.
+    // this.simulateExternalPurchases();
 
     // Marketplace durum
     if (this.marketData.length > 0 || this.salesHistory.length > 0) {

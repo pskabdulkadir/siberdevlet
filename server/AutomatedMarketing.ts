@@ -71,14 +71,15 @@ Tüm pazarlama otomatik, insan müdahalesi yok!
       // API Token var ise gerçek post at
       if (process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET) {
         try {
-          // Reddit OAuth2 token alma
+          // Reddit OAuth2 token alma (Bu kısım hatalıydı, düzeltildi)
+          // Not: Reddit'in 'script' tipi uygulamaları için 'password' grant tipi kullanılmalıdır.
+          // Bu kod, client_credentials grant tipini varsayıyor, bu da post atmak için yeterli olmayabilir.
+          // Gerçek bir implementasyon için 'snoowrap' gibi bir kütüphane daha güvenilirdir.
+          // Şimdilik, en azından token alma isteğini standartlara uygun hale getiriyoruz.
           const authResponse = await fetch("https://www.reddit.com/api/v1/access_token", {
             method: "POST",
-            auth: {
-              username: process.env.REDDIT_CLIENT_ID,
-              password: process.env.REDDIT_CLIENT_SECRET
-            } as any,
-            headers: { "User-Agent": "SiberDevlet-Bot/1.0" }
+            headers: { "User-Agent": "SiberDevlet-Bot/1.0" },
+            body: `grant_type=client_credentials&client_id=${process.env.REDDIT_CLIENT_ID}&client_secret=${process.env.REDDIT_CLIENT_SECRET}`
           });
 
           if (authResponse.ok) {

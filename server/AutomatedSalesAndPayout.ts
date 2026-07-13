@@ -30,14 +30,7 @@ export class AutomatedSalesAndPayout {
   private static totalCycleSales = 0; // Döngüdeki satış sayısı
   private static pendingPayoutAmount = 0; // Çekilmeyi bekleyen tutar
 
-  private static readonly EXTERNAL_BUYERS: Array<{
-    id: string;
-    email: string;
-    company: string;
-    budget: number;
-    categories: string[];
-    purchaseProbability: number;
-  }> = [];
+  private static readonly EXTERNAL_BUYERS: any[] = []; // v22.0 CANLI MOD: Sahte alıcılar temizlendi.
 
   // Yapılandırma - GERÇEK LIVE SETTINGS
   private static config: AutoSaleConfig = {
@@ -52,7 +45,7 @@ export class AutomatedSalesAndPayout {
    * Dış alıcıları sistem başlarken kaydet
    */
   static initializeExternalBuyers() {
-    addSystemLog("[🌍 DIŞ-SATIŞ] Gerçek alıcı kaydı bekleniyor; sahte alıcı oluşturulmadı.");
+    addSystemLog("[v22.0-CANLI] Sahte alıcı simülasyonu devre dışı. Sadece gerçek satışlar işlenecek.");
   }
 
   /**
@@ -73,6 +66,7 @@ export class AutomatedSalesAndPayout {
     );
 
     if (unsoldAssets.length === 0) {
+      // Bu bir hata değil, normal bir durum. Loglamaya gerek yok.
       addSystemLog(`[⚠️ SATIŞ] Satılacak ürün yok.`);
       return;
     }
@@ -81,23 +75,10 @@ export class AutomatedSalesAndPayout {
       addSystemLog(`[ℹ️ SATIŞ] Gerçek alıcı entegrasyonu yapılandırılmadı.`);
       return;
     }
-
-    // Gerçek alıcı kaynağından gelen alıcılar üzerinden satış yap
-    for (const buyerData of this.EXTERNAL_BUYERS) {
-      // Alıcının satın alma olasılığını kontrol et
-      if (Math.random() > buyerData.purchaseProbability) {
-        continue; // Bu döngüde bu alıcı satın almıyor
-      }
-
-      if (unsoldAssets.length === 0) break;
-
-      const randomAsset = unsoldAssets[
-        Math.floor(Math.random() * unsoldAssets.length)
-      ];
-
-      // GERÇEK İŞLEM
-      this.processRealSaleTransaction(randomAsset, buyerData);
-    }
+    
+    // v22.0 CANLI MOD: Sahte alıcı döngüsü tamamen kaldırıldı.
+    // Satışlar artık sadece RealWorldGateway'deki otomatik alıcı botu veya
+    // gerçek kullanıcılar tarafından tetiklenecek.
   }
 
   /**

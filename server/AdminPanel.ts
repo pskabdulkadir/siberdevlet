@@ -1,5 +1,6 @@
 /**
  * ADMIN PANEL v21.0
+ * v25.0: Manuel Banka Transferi Otomasyonu
  * - Login sistemi
  * - Wallet Havuzu yönetimi (Prisma SQLite ile kalıcı)
  * - Manual transfer tetikleme
@@ -10,6 +11,7 @@ import { addSystemLog } from "./simulation.js";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 import { ethers } from "ethers";
+import { BankTransferNode } from "./BankTransferNode.js";
 
 const prisma = new PrismaClient();
 
@@ -38,6 +40,7 @@ interface ManualTransfer {
   id: string;
   status: "pending" | "initiated" | "success" | "failed";
   amount: number;
+  amountTRY: number;
   timestamp: number;
   walletAddress?: string;
   errorMessage?: string;
@@ -262,10 +265,10 @@ export class AdminPanel {
 
   /**
    * Manual Transfer Tetikle - Admin USDT cüzdanı ile
+   * v25.0: Artık Banka Transferi (EFT) tetikliyor.
    */
   static async triggerManualTransfer(
     sessionId: string,
-    walletAddress: string,
     amount?: number
   ): Promise<{ success: boolean; transferId?: string; error?: string }> {
     // Session kontrol
@@ -288,12 +291,13 @@ export class AdminPanel {
 
     const transferId = `manual-transfer-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 
+    const amountTRY = transferAmount * 30; // Yaklaşık kur
     const transfer: ManualTransfer = {
       id: transferId,
       status: "pending",
       amount: transferAmount,
-      timestamp: Date.now(),
-      walletAddress
+      amountTRY: amountTRY,
+      timestamp: Date.now()
     };
 
     this.manualTransfers.push(transfer);
@@ -303,12 +307,12 @@ export class AdminPanel {
     console.log(`${"═".repeat(70)}`);
     console.log(`   Transfer ID: ${transferId}`);
     console.log(`   Tutar: ${transferAmount.toFixed(2)} USD`);
-    console.log(`   Hedef Cüzdan: ${walletAddress}`);
+    console.log(`   Hedef Banka: QNB Finansbank`);
     console.log(`   Durum: İşleniyor...`);
     console.log(`${"═".repeat(70)}\n`);
 
     addSystemLog(
-      `[👨‍💼 MANUEL TRANSFER] TID: ${transferId} | ${transferAmount.toFixed(2)} USD → ${walletAddress}`
+      `[👨‍💼 MANUEL BANKA TRANSFERİ] TID: ${transferId} | ${transferAmount.toFixed(2)} USD → QNB Finansbank IBAN`
     );
 
     // Havuzdan çıkar (işlem başarıyla gönderildiyse)
@@ -316,8 +320,8 @@ export class AdminPanel {
     this.walletPool.totalTRY -= transferAmount * 30;
     this.walletPool.lastUpdate = Date.now();
 
-    // Asenkron: Gerçek USDT transferini başlat
-    this.executeManualTransfer(transferId, transferAmount, walletAddress).catch(err => {
+    // Asenkron: Gerçek Banka EFT transferini başlat
+    this.executeManualBankTransfer(transferId, transferAmount, amountTRY).catch(err => {
       console.error(`[❌ TRANSFER HATASI] ${err.message}`);
       addSystemLog(`[❌ TRANSFER HATASI] TID: ${transferId} - ${err.message}`);
     });
@@ -326,71 +330,41 @@ export class AdminPanel {
   }
 
   /**
-   * Gerçek USDT Transfer Yap (asenkron)
+   * Gerçek Banka EFT Transferi Yap (asenkron)
    */
-  private static async executeManualTransfer(
+  private static async executeManualBankTransfer(
     transferId: string,
     amount: number,
-    walletAddress: string
+    amountTRY: number
   ): Promise<void> {
+    const transfer = this.manualTransfers.find(t => t.id === transferId);
+    if (!transfer) return;
+
     try {
-      const transfer = this.manualTransfers.find(t => t.id === transferId);
-      if (!transfer) return;
-
       transfer.status = "initiated";
+      const targetIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
 
-      console.log(`\n[USDT TRANSFER] Blokzincir işlemi başlatılıyor...`);
-      console.log(`   Transfer ID: ${transferId}`);
-      console.log(`   Tutar: ${amount.toFixed(2)} USDT`);
-      console.log(`   Hedef: ${walletAddress}`);
-
-      // Gerçek USDT TRC-20 transferi (credentials varsa)
-      const privateKey = process.env.OWNER_CRYPTO_PRIVATE_KEY;
-      if (!privateKey) {
-        throw new Error("OWNER_CRYPTO_PRIVATE_KEY eksik - Transfer başarısız");
-      }
-
-      const rpcUrl = process.env.POLYGON_RPC_URL;
-      if (!rpcUrl) throw new Error("POLYGON_RPC_URL eksik - Transfer başarısız");
-
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
-      const wallet = new ethers.Wallet(privateKey, provider);
-      const token = new ethers.Contract(
-        process.env.POLYGON_USDT_CONTRACT || "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-        ["function transfer(address to, uint256 amount) returns (bool)", "function decimals() view returns (uint8)"],
-        wallet
-      );
-      const decimals = await token.decimals();
-      const tx = await token.transfer(walletAddress, ethers.parseUnits(amount.toFixed(6), decimals));
-      await tx.wait(1);
+      // BankTransferNode üzerinden gerçek EFT talimatı gönder
+      await BankTransferNode.triggerBankTransfer(transferId, amountTRY, targetIban, "Admin Panel", "Manuel Havuz Boşaltma");
 
       transfer.status = "success";
-      transfer.txHash = tx.hash;
-
-      console.log(`   ✅ İşlem Onaylandı`);
-      console.log(`   TX Hash: ${tx.hash.substring(0, 20)}...\\n`);
-
-      addSystemLog(
-        `[✅ USDT GÖNDERİLDİ] TID: ${transferId} | ${amount.toFixed(2)} USDT | TX: ${tx.hash.substring(0, 20)}...`
-      );
-
+      addSystemLog(`[✅ MANUEL EFT] TID: ${transferId} | ₺${amountTRY.toFixed(2)} | QNB API'ye talimat gönderildi.`);
     } catch (error: any) {
-      const transfer = this.manualTransfers.find(t => t.id === transferId);
       if (transfer) {
         transfer.status = "failed";
         transfer.errorMessage = error.message;
       }
 
-      console.error(`\n[❌ USDT TRANSFER HATASI]`);
+      console.error(`\n[❌ MANUEL EFT HATASI]`);
       console.error(`   Transfer ID: ${transferId}`);
       console.error(`   Hata: ${error.message}`);
       console.error(`   Havuzda Para Geri Ekleniyor...\n`);
 
       // Havuza geri ekle
       this.walletPool.totalUSD += amount;
-      this.walletPool.totalTRY += amount * 30;
+      this.walletPool.totalTRY += amountTRY;
 
-      addSystemLog(`[❌ TRANSFER HATASI] TID: ${transferId} - Havuza geri eklendi`);
+      addSystemLog(`[❌ MANUEL EFT HATASI] TID: ${transferId} - Para havuza geri eklendi`);
     }
   }
 
@@ -423,4 +397,5 @@ export class AdminPanel {
       }
     };
   }
+
 }

@@ -2,16 +2,39 @@ import { state, addSystemLog } from "./simulation.js";
 import { ExternalApiMarket } from "./ExternalApiMarket.js";
 import { BankTransferNode } from "./BankTransferNode.js";
 import { AdminPanel } from "./AdminPanel.js";
+import { AdminPanel } from "./AdminPanel.js";
 import { addSystemLog } from "./simulation.js";
 import crypto from "crypto";
 import { PolygonValidator } from "./PolygonValidator.js";
 
 /**
  * v11.0: RealWorldGateway
+ * v27.0: Stripe alternatifi olarak "Kurumsal Bütçe" sistemi eklendi.
  * Gerçek Dünya Entegrasyon Köprüsü - Gerçek alıcıların bot verilerini satın aldığı platform
  * 
  * Hiçbir semiye para yüklenmez - tüm gelir dış alıcılardan doğrudan gelir
  */
+
+/**
+ * v27.0: Kurumsal Bütçe Yönetimi
+ * Otomatik alıcı botların harcamaları için ayrılmış, sahibi tarafından fonlanan sanal bütçe.
+ * Bu, Stripe gibi harici bir ödeme sağlayıcısına olan ihtiyacı ortadan kaldırır.
+ */
+class CorporateAccount {
+    static budget = parseFloat(process.env.CORPORATE_BUDGET_USD || "5000.0"); // Başlangıç bütçesi (USD)
+    static totalSpent = 0;
+
+    static purchase(amount: number): boolean {
+        if (this.budget >= amount) {
+            this.budget -= amount;
+            this.totalSpent += amount;
+            addSystemLog(`[KURUMSAL BÜTÇE] Otomatik alım için ${amount.toFixed(2)} USD harcandı. Kalan bütçe: ${this.budget.toFixed(2)} USD.`);
+            return true;
+        }
+        addSystemLog(`[KURUMSAL BÜTÇE] Yetersiz bütçe! ${amount.toFixed(2)} USD'lik alım denendi, kalan: ${this.budget.toFixed(2)} USD.`);
+        return false;
+    }
+}
 
 export interface RealBuyer {
   id: string;
@@ -40,7 +63,7 @@ export interface Transaction {
   buyerId: string;
   productId: string;
   amount: number; // USDT
-  paymentMethod: "USDT_TRC20" | "BANK_TRANSFER";
+  paymentMethod: "BANK_TRANSFER"; // v24.0: Kripto ödemeleri kaldırıldı
   status: "pending" | "verified" | "completed" | "failed";
   transactionHash?: string; // TRC-20 tx hash
   bankReceipt?: string; // Banka dekontu
@@ -129,7 +152,7 @@ export class RealWorldGateway {
   static initiatePayment(
     buyerId: string,
     productId: string,
-    paymentMethod: "USDT_TRC20" | "BANK_TRANSFER"
+    paymentMethod: "BANK_TRANSFER"
   ): Transaction {
     const buyer = this.buyers.get(buyerId);
     const product = this.marketplace.find(p => p.id === productId);
@@ -162,12 +185,7 @@ export class RealWorldGateway {
     console.log(`📦 Ürün: "${product.title}"`);
     console.log(`💵 Tutar: ${product.price} USDT\n`);
 
-    if (paymentMethod === "USDT_TRC20") {
-      console.log(`🔗 Ağ: TRC-20 (TRON Network)`);
-      console.log(`📥 Alıcı Cüzdan (KOPYA YAP):`);
-      console.log(`   TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn\n`);
-      console.log(`⚠️  Ödemeyi gönderdikten sonra İşlem Hash'i doğrulayın:\n`);
-    } else {
+    if (paymentMethod === "BANK_TRANSFER") {
       console.log(`🏦 Banka: QNB Finansbank`);
       console.log(`👤 Alıcı: Abdulkadir Kan`);
       console.log(`🔢 IBAN (KOPYA YAP):`);
@@ -201,14 +219,8 @@ export class RealWorldGateway {
       throw new Error("İşlem bulunamadı");
     }
 
-    if (tx.paymentMethod !== "USDT_TRC20") {
-      throw new Error("Banka dekontları otomatik doğrulanamaz; admin onayı gerekir");
-    }
-
-    const validation = await PolygonValidator.validateTransaction(proof, tx.amount, "unknown");
-    if (!validation.valid) {
-      throw new Error(validation.error || "Blockchain ödemesi doğrulanamadı");
-    }
+    // v24.0: Kripto ödemeleri kaldırıldığı için bu blok her zaman banka transferi varsayar.
+    throw new Error("Banka dekontları otomatik doğrulanamaz; admin onayı gerekir");
 
     // Ödemeyi onayla
     tx.status = "verified";
@@ -341,7 +353,7 @@ export class RealWorldGateway {
       buyerId,
       productId: product.id,
       amount: buyAmount,
-      paymentMethod: "USDT_TRC20",
+      paymentMethod: "BANK_TRANSFER", // v24.0: Otomatik alıcılar da artık banka transferi simüle eder.
       status: "pending",
       createdAt: now,
       transactionHash: `auto-tx-${Math.random().toString(36).substring(2, 15)}`
@@ -366,41 +378,28 @@ export class RealWorldGateway {
         `Otomatik Cüzdan Transfer Başlandı...`
       );
 
-      console.log(
-        `\n[🤖 OTOBOT SATIŞ] "${product.title}" | ${buyAmount} USDT | Buyer: ${autoEmail}`
-      );
+      // v27.0: Stripe yerine Kurumsal Bütçe'den harcama yap.
+      if (CorporateAccount.purchase(buyAmount)) {
+        // Harcama başarılı, parayı Admin Paneli havuzuna ekle.
+        const amountTRY = buyAmount * 30; // Yaklaşık kur
+        AdminPanel.addToWalletPool(
+          buyAmount, 
+          amountTRY, 
+          `Kurumsal Otobot Satış: ${product.title}`, 
+          tx.id
+        ).catch(err => {
+          console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+        });
+      } else {
+        // Kurumsal bütçe yetersiz, işlemi iptal et.
+        console.warn(`[⚠️ OTO-SATIŞ] Kurumsal bütçe yetersiz olduğu için "${product.title}" satışı iptal edildi.`);
+      }
+    }
 
-      // GERÇEK PARA TRANSFERI - CANLI
-      const amountTRY = buyAmount * 30;
-      const txId = `sale-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-
-      // Para havuza ekle
-      AdminPanel.addToWalletPool(buyAmount, amountTRY, `Otobot Satış: ${product.title}`, txId).catch(err => {
-        console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+    this.lastAutoBuyerTime = now;
+  }
+}
       });
-
-      // GERÇEK BANKA TRANSFERI BAŞLAT
-      const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
-      BankTransferNode.processRealTransfer(
-        txId,
-        buyAmount,
-        amountTRY,
-        bankIban,
-        autoEmail,
-        product.title
-      ).then(result => {
-        if (result.success) {
-          addSystemLog(
-            `[🏦 TRANSFER BAŞLADI] ${product.title} - TRN: ${result.transferId} | $${buyAmount.toFixed(2)}`
-          );
-        }
-      }).catch(err => {
-        console.error(`[❌ TRANSFER HATASI] ${err.message}`);
-      });
-
-      // Payout tetikle
-      const { PayoutManager } = require("./PayoutManager.js");
-      PayoutManager.triggerCryptoPayout(buyAmount);
     }
 
     this.lastAutoBuyerTime = now;

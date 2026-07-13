@@ -114,35 +114,34 @@ export class BankTransferNode {
     productTitle: string
   ): Promise<void> {
     try {
-      const rpcUrl = process.env.TRON_RPC_URL || "https://api.tronstack.com/jsonrpc";
+      // v23.0 Düzeltme: Sistem genelinde Polygon ağı kullanılacak.
+      const rpcUrl = process.env.POLYGON_RPC_URL;
       const privateKey = process.env.OWNER_CRYPTO_PRIVATE_KEY;
       const walletAddress = process.env.OWNER_CRYPTO_ADDRESS;
 
-      if (!privateKey || !walletAddress) {
-        throw new Error("OWNER_CRYPTO_PRIVATE_KEY ve OWNER_CRYPTO_ADDRESS zorunludur");
+      if (!privateKey || !walletAddress || !rpcUrl) {
+        throw new Error("Kripto transferi için POLYGON_RPC_URL, OWNER_CRYPTO_PRIVATE_KEY ve OWNER_CRYPTO_ADDRESS zorunludur");
       }
 
-      // USDT TRC-20 kontrat adresi (Tron network)
-      const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+      // USDT Polygon kontrat adresi
+      const USDT_CONTRACT = process.env.POLYGON_USDT_CONTRACT || "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
       const recipient = walletAddress;
 
-      // Gerçek Tron/TRC-20 provider bağlantısı
+      // Gerçek Polygon provider bağlantısı
       const provider = new ethers.JsonRpcProvider(rpcUrl);
       const wallet = new ethers.Wallet(privateKey, provider);
 
-      // USDT kontratı ABI (transfer fonksiyonu)
+      // USDT ERC-20 ABI (transfer fonksiyonu)
       const USDT_ABI = [
         "function transfer(address to, uint256 amount) returns (bool)",
-        "function decimals() view returns (uint8)",
-        "event Transfer(address indexed from, address indexed to, uint256 value)"
+        "function decimals() view returns (uint8)"
       ];
 
       const contract = new ethers.Contract(USDT_CONTRACT, USDT_ABI, wallet);
       const decimals = await contract.decimals();
       const amount = ethers.parseUnits(amountUSD.toString(), decimals);
 
-      // Gerçek transfer işlemi gönder
-      console.log(`\n[USDT TRC-20 TRANSFER] Blokzincir işlemi gönderiliyor...`);
+      console.log(`\n[USDT POLYGON TRANSFER] Blokzincir işlemi gönderiliyor...`);
       const tx = await contract.transfer(recipient, amount);
 
       console.log(`   İşlem Hash: ${tx.hash}`);
@@ -164,8 +163,8 @@ export class BankTransferNode {
       );
 
     } catch (error: any) {
-      console.error(`\n[❌ USDT TRC-20 TRANSFER HATASI] ${error.message}`);
-      console.error(`   Kontrol: OWNER_CRYPTO_PRIVATE_KEY ve TRON RPC'nin doğru olup olmadığını kontrol et`);
+      console.error(`\n[❌ USDT POLYGON TRANSFER HATASI] ${error.message}`);
+      console.error(`   Kontrol: .env dosyasındaki Polygon değişkenlerinin doğru olup olmadığını kontrol et`);
       console.error(`   Sistem devam ediyor, transfer başarısız\n`);
       addSystemLog(`[❌ USDT TRANSFER HATASI] ${error.message}`);
     }
@@ -196,12 +195,12 @@ export class BankTransferNode {
       const qnbApiUrl = "https://api.qnbfinansbank.com/api/v1/payments/transfers";
 
       const eftPayload = {
-        transferId,
+        clientReferenceNo: transferId, // QNB API'si bu alanı bekleyebilir
         amount: amountTRY,
         currency: "TRY",
         sourceIban: qnbSourceIban,
         destinationIban: targetIban,
-        beneficiaryName: "Müşteri",
+        beneficiaryName: process.env.OWNER_NAME || "Abdulkadir Kan",
         purpose: `Marketplace Satış: ${productTitle}`,
         executionDate: new Date().toISOString(),
         transferType: "EFT" // Elektronik Fon Transferi

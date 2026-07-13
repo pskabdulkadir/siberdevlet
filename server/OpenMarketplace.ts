@@ -207,7 +207,7 @@ export class OpenMarketplace {
       bankDetails: {
         iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
         accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
-        bankName: process.env.OWNER_BANK_NAME || "Ziraat Bankası",
+        bankName: process.env.OWNER_BANK_NAME || "QNB Finansbank",
         amount: amountTRY
       }
     };
@@ -244,8 +244,8 @@ export class OpenMarketplace {
         accountHolder: order.bankDetails.accountHolder,
         bankName: order.bankDetails.bankName,
         amountUSD: order.amountUSD.toFixed(2),
-        amountTRY: order.amountTRY.toFixed(2),
-        swift: "TCZBTR2A",
+        amountTRY: order.amountTRY.toFixed(2), // v25.0: SWIFT kodu düzeltildi
+        swift: "FNNBTRISOPS",
         orderId: order.id
       },
       msg: `Lütfen ₺${order.amountTRY.toFixed(2)} banka transferi yapınız. Order: ${orderId}`
@@ -298,7 +298,7 @@ export class OpenMarketplace {
       `[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - $${order.amountUSD.toFixed(2)} - Ürün: ${product?.title}`
     );
 
-    // Para havuza ekle
+    // v23.0 Düzeltme: Para sadece merkezi havuza eklenir. Otomatik transfer buradan yapılmaz.
     AdminPanel.addToWalletPool(
       order.amountUSD,
       order.amountTRY,
@@ -306,24 +306,6 @@ export class OpenMarketplace {
       orderId
     ).catch(err => {
       console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
-    });
-
-    // GERÇEK BANKA TRANSFERI BAŞLAT
-    BankTransferNode.processRealTransfer(
-      orderId,
-      order.amountUSD,
-      order.amountTRY,
-      order.bankDetails.iban,
-      order.buyerEmail,
-      product?.title || "Bilinmeyen Ürün"
-    ).then(result => {
-      if (result.success) {
-        addSystemLog(
-          `[🏦 GERÇEK TRANSFER] Order: ${orderId} - Marketplace Transfer ID: ${result.transferId}`
-        );
-      }
-    }).catch(err => {
-      addSystemLog(`[❌ TRANSFER HATASI] Order: ${orderId} - ${err.message}`);
     });
 
     return true;

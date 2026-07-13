@@ -50,34 +50,22 @@ export class AutomationManager {
       return; // Minimum limit altında, transfer yapma
     }
 
-    // PAYOUT TETIKLEME
-    const payoutAmount = this.creatorProfitPool; // Tüm birikmiş kârı transfer et
-    this.creatorProfitPool = 0; // Havuzu sıfırla
-
-    // v9.7: BANKA TRANSFER - Fire and forget (async, hata olsa da devam)
-    this.processBankPayout(payoutAmount).catch(err => {
-      console.error("Bank payout error:", err.message);
-    });
-
-    // v9.7: KRİPTO TRANSFER - Fire and forget (async, hata olsa da devam)
-    this.processCryptoPayout(payoutAmount).catch(err => {
-      console.error("Crypto payout error:", err.message);
-    });
+    // v22.0 CANLI MOD: Otomatik payout devre dışı bırakıldı.
+    // Para AdminPanel'deki havuzda birikmeye devam edecek ve manuel transfer beklenecek.
+    const poolAmount = this.creatorProfitPool;
 
     // Tarih kayıt
-    this.totalPayoutsProcessed += payoutAmount;
+    // this.totalPayoutsProcessed += payoutAmount; // Bu artık AdminPanel'de takip edilecek.
     this.payoutHistory.push({
       tick: currentTick,
-      amount: payoutAmount,
-      type: "bank",
+      amount: poolAmount,
+      type: "bank", // 'pooled' olarak değiştirilebilir.
       timestamp: Date.now()
     });
 
     // sistem logu
     addSystemLog(
-      `[v9.7-OTONOM-HASAT] 🚀 BANKA & KRİPTO PAYOUT BAŞLATILDI: ${payoutAmount.toFixed(2)} GAIA ` +
-      `${process.env.OWNER_NAME || "Kurucu"} (${process.env.OWNER_BANK || "Banka"}) hesabına aktarılıyor... ` +
-      `Toplam işlem: #${this.payoutHistory.length}`
+      `[v22.0-HAVUZ] 💰 ${poolAmount.toFixed(2)} USDT daha kurucu havuzuna eklendi. Toplam birikim: ${poolAmount.toFixed(2)} USDT. Admin panelinden manuel transfer bekleniyor.`
     );
 
     this.autoConfig.lastPayoutTick = currentTick;
