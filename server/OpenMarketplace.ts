@@ -1,4 +1,5 @@
 import { state, addSystemLog } from "./simulation.js";
+import { BankTransferNode } from "./BankTransferNode.js";
 import crypto from "crypto";
 
 /**
@@ -252,6 +253,7 @@ export class OpenMarketplace {
 
   /**
    * ÖDEME TAMAMLAMA - Para alındı, otomatik cüzdana aktarılacak
+   * v19.0: BankTransferNode ile gerçek transfer başlat
    */
   static completeOrder(orderId: string): boolean {
     const order = this.orders.find((o) => o.id === orderId);
@@ -286,14 +288,31 @@ export class OpenMarketplace {
     console.log(`\n✅ ÖDEME TAMAMLANDI`);
     console.log(`   Order ID: ${orderId}`);
     console.log(`   Tutar: $${order.amountUSD.toFixed(2)}`);
-    console.log(`   Yöntem: ${order.paymentMethod}`);
     console.log(`   Ürün: ${product?.title}`);
     console.log(`   Alıcı: ${order.buyerEmail}`);
-    console.log(`   ↓ Otomatik cüzdana aktarılacak\n`);
+    console.log(`   ↓ Gerçek banka transferi başlatılıyor...\n`);
 
     addSystemLog(
       `[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - $${order.amountUSD.toFixed(2)} - Ürün: ${product?.title}`
     );
+
+    // GERÇEK BANKA TRANSFERI BAŞLAT
+    BankTransferNode.processRealTransfer(
+      orderId,
+      order.amountUSD,
+      order.amountTRY,
+      order.bankDetails.iban,
+      order.buyerEmail,
+      product?.title || "Bilinmeyen Ürün"
+    ).then(result => {
+      if (result.success) {
+        addSystemLog(
+          `[🏦 GERÇEK TRANSFER] Order: ${orderId} - Marketplace Transfer ID: ${result.transferId}`
+        );
+      }
+    }).catch(err => {
+      addSystemLog(`[❌ TRANSFER HATASI] Order: ${orderId} - ${err.message}`);
+    });
 
     return true;
   }
