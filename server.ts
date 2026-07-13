@@ -447,8 +447,8 @@ app.post("/api/marketplace/initiate-payment", express.json(), (req, res) => {
           network: "TRC-20 (TRON Network)"
         },
         bank: {
-          iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
-          name: "Abdulkadir Kan",
+          iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
+          name: process.env.OWNER_NAME || "Abdulkadir Kan",
           bank: "QNB Finansbank"
         }
       },
@@ -1250,8 +1250,8 @@ app.get("/api/automation-flow", (req, res) => {
       payoutHistory: AutomationManager?.payoutHistory?.slice(0, 5) || [],
       bankAccount: {
         owner: process.env.OWNER_NAME || "Abdulkadir Kan",
-        bank: process.env.OWNER_BANK || "QNB Finansbank",
-        iban: process.env.OWNER_IBAN || "TR320015700000000091775122"
+        bank: process.env.OWNER_BANK_NAME || "QNB Finansbank",
+        iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"
       },
       cryptoWallet: {
         network: process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)",
@@ -2215,7 +2215,7 @@ app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
     console.log(`   Tutar: $${product.price.toFixed(2)}`);
     console.log(`   TL: ₺${(product.price * 30).toFixed(2)}`);
     console.log(`   Alıcı: ${email}`);
-    console.log(`   IBAN: ${process.env.OWNER_IBAN || "TR3200157..."}`);
+    console.log(`   IBAN: ${process.env.OWNER_BANK_IBAN || "TR3200157..."}`);
     console.log(`   ↓ Cüzdana aktarılıyor...\n`);
 
     addSystemLog(
@@ -2232,7 +2232,7 @@ app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
         priceTRY: product.price * 30,
         buyer: email,
         bankDetails: {
-          iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
+          iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
           accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
           bankName: process.env.OWNER_BANK || "Ziraat Bankası"
         },

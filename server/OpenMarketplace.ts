@@ -202,9 +202,9 @@ export class OpenMarketplace {
       timestamp: Date.now(),
       buyerEmail,
       bankDetails: {
-        iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
+        iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
         accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
-        bankName: process.env.OWNER_BANK || "Ziraat Bankası",
+        bankName: process.env.OWNER_BANK_NAME || "Ziraat Bankası",
         amount: amountTRY
       }
     };
