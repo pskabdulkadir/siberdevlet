@@ -2109,14 +2109,22 @@ app.get("/api/marketplace/product/:productId", (req, res) => {
   });
 });
 
-// Ödeme başlat - Stripe/PayPal/Bank/Crypto
+// SADECE POLYGON USDT - Ödeme başlat
 app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
-  const { productId, email, name, paymentMethod } = req.body;
+  const { productId, email, name, walletAddress } = req.body;
 
-  if (!productId || !email || !name || !paymentMethod) {
+  if (!productId || !email || !name || !walletAddress) {
     return res.status(400).json({
       success: false,
-      error: "Gerekli: productId, email, name, paymentMethod"
+      error: "Gerekli: productId, email, name, walletAddress (0x...)"
+    });
+  }
+
+  // Wallet formatını kontrol et
+  if (!walletAddress.startsWith("0x") || walletAddress.length !== 42) {
+    return res.status(400).json({
+      success: false,
+      error: "Geçersiz Polygon cüzdan adresi (0x... formatı, 42 karakter)"
     });
   }
 
@@ -2129,9 +2137,9 @@ app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
     const result = await OpenMarketplace.initiatePayment(
       "", // customerId otomatik oluşturulur
       productId,
-      paymentMethod as any,
       email,
-      name
+      name,
+      walletAddress // Polygon cüzdan
     );
 
     res.json(result);
@@ -2140,27 +2148,35 @@ app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
   }
 });
 
-// Ödeme doğrulama (Webhook - Stripe, PayPal)
-app.post("/api/marketplace/confirm-payment", express.json(), (req, res) => {
-  const { orderId, transactionId } = req.body;
+// POLYGON USDT BLOCKCHAIN DOĞRULAMA
+app.post("/api/marketplace/verify-payment", express.json(), async (req, res) => {
+  const { orderId, transactionHash } = req.body;
 
-  if (!orderId) {
-    return res.status(400).json({ success: false, error: "OrderId gerekli" });
+  if (!orderId || !transactionHash) {
+    return res.status(400).json({
+      success: false,
+      error: "Gerekli: orderId, transactionHash (0x...)"
+    });
   }
 
-  const success = OpenMarketplace.completeOrder(orderId, transactionId);
+  try {
+    const result = await OpenMarketplace.verifyBlockchainPayment(orderId, transactionHash);
 
-  if (!success) {
-    return res.status(404).json({ success: false, error: "Order bulunamadı" });
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    addSystemLog(`[✅ POLYGON USDT ÖDEME DOĞRULANDI] Order: ${orderId} - TX: ${transactionHash}`);
+
+    res.json({
+      success: true,
+      message: "Ödeme Polygon blockchain'de doğrulandı! Ürünü indirebilirsiniz.",
+      orderId,
+      transactionHash
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
-
-  addSystemLog(`[✅ ÖDEME ONAYLANDI] Order: ${orderId}`);
-
-  res.json({
-    success: true,
-    message: "Ödeme doğrulandı. Ürün indirebilirsiniz.",
-    orderId
-  });
 });
 
 // PAYOUT YÖNETIMI

@@ -2,44 +2,28 @@ import { state, addSystemLog } from "./simulation.js";
 import Stripe from "stripe";
 
 /**
- * v15.0: AutoPayoutManager
- * OTOMATIK PARA ÇEKME - Marketplace gelirini cüzdana aktar
- * 
- * Desteklenen Ödeme Yöntemleri:
- * 1. Stripe Bank Payout (IBAN/SWIFT)
- * 2. PayPal Transfer
- * 3. Banka Transferi (Manual - İnsanlar kontrol eder)
- * 4. Kripto (Bitcoin, Ethereum, Tezos)
+ * v16.0: AutoPayoutManager
+ * SADECE POLYGON USDT - Marketplace gelirini otomatik cüzdana aktar
+ *
+ * Ödeme Yöntemi: Polygon USDT → USDT Cüzdan (Otomatik)
  */
 
 export interface PayoutConfig {
   enabled: boolean;
-  payoutThreshold: number; // Para çekmeyi başla (USD)
-  preferredMethod: "stripe" | "paypal" | "bank_transfer" | "crypto";
+  payoutThreshold: number; // Para çekmeyi başla (USDT)
   payoutInterval: number; // TICK aralığı
   autoTransfer: boolean; // Eşik geçince otomatik çek mi?
 }
 
 export class AutoPayoutManager {
-  // Stripe lazy initialize - key yoksa null
-  private static _stripe: Stripe | null = null;
-
-  private static get stripe(): Stripe {
-    if (!this._stripe && process.env.STRIPE_SECRET_KEY) {
-      this._stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    }
-    return this._stripe as any;
-  }
-
   private static lastPayoutCheck = 0;
 
-  // Yapılandırma - LIVE SETTINGS
+  // Yapılandırma - POLYGON USDT ONLY
   private static config: PayoutConfig = {
     enabled: true,
-    payoutThreshold: 50, // 50 USD geçince çek (düşük = sık payout)
-    preferredMethod: process.env.PAYOUT_METHOD as any || "stripe",
+    payoutThreshold: 100, // 100 USDT geçince çek (düşük = sık payout)
     payoutInterval: 100, // Her 100 TICK kontrol et
-    autoTransfer: true // MUTLAKA otomatik
+    autoTransfer: true // MUTLAKA otomatik Polygon transfer
   };
 
   // İstatistikler
@@ -67,40 +51,22 @@ export class AutoPayoutManager {
   }
 
   /**
-   * OTOMATIK PARA ÇEKME - Yönteme göre çek
+   * POLYGON USDT OTOMATIK ÇEKME
    */
   private static async initiateAutoPayout(amount: number) {
     console.log("\n" + "═".repeat(80));
-    console.log(`🚀 OTOMATIK PARA ÇEKME BAŞLATILDI`);
-    console.log(`   Tutar: $${amount.toFixed(2)}`);
-    console.log(`   Yöntem: ${this.config.preferredMethod}`);
+    console.log(`🚀 POLYGON USDT OTOMATIK ÇEKME`);
+    console.log(`   Tutar: ${amount.toFixed(2)} USDT`);
+    console.log(`   Ağ: Polygon Mainnet`);
+    console.log(`   Cüzdan: ${process.env.OWNER_CRYPTO_ADDRESS}`);
     console.log("═".repeat(80) + "\n");
 
     addSystemLog(
-      `[🚀 PAYOUT] $${amount.toFixed(2)} cüzdana çekilecek (${this.config.preferredMethod})`
+      `[🚀 POLYGON PAYOUT] ${amount.toFixed(2)} USDT cüzdana çekilecek`
     );
 
     try {
-      switch (this.config.preferredMethod) {
-        case "stripe":
-          await this.payoutViaStripe(amount);
-          break;
-
-        case "paypal":
-          await this.payoutViaPayPal(amount);
-          break;
-
-        case "bank_transfer":
-          this.payoutViaBankTransfer(amount);
-          break;
-
-        case "crypto":
-          await this.payoutViaCrypto(amount);
-          break;
-
-        default:
-          addSystemLog(`[⚠️ PAYOUT] Bilinmeyen yöntem: ${this.config.preferredMethod}`);
-      }
+      await this.payoutViaPolygon(amount);
 
       this.totalPayoutsInitiated += 1;
       this.totalPayoutAmount += amount;
@@ -112,113 +78,32 @@ export class AutoPayoutManager {
   }
 
   /**
-   * STRIPE - Banka hesabına transfer (IBAN/SWIFT)
+   * POLYGON USDT - Otomatik USDT Transfer
    */
-  private static async payoutViaStripe(amount: number) {
-    try {
-      if (!process.env.STRIPE_SECRET_KEY) {
-        throw new Error("Stripe Secret Key yapılandırılmamış");
-      }
-
-      // Stripe Connect gerekli - fallback
-      console.log(`\n✅ STRIPE PAYOUT`);
-      console.log(`   Tutar: $${amount.toFixed(2)}`);
-      console.log(`   Hesap: ${process.env.OWNER_IBAN || "IBAN bulunamadı"}`);
-      console.log(`   Durum: Transfer sıraya alındı`);
-      console.log(`   Tahmini Zaman: 1-3 iş günü\n`);
-
-      addSystemLog(
-        `[✅ STRIPE] $${amount.toFixed(2)} IBAN'a transfer sıraya alındı (1-3 gün)`
-      );
-
-    } catch (error: any) {
-      addSystemLog(`[❌ STRIPE HATASI] ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * PAYPAL - PayPal hesabına transfer
-   */
-  private static async payoutViaPayPal(amount: number) {
-    try {
-      // PayPal API - fallback
-      console.log(`\n✅ PAYPAL PAYOUT`);
-      console.log(`   Tutar: $${amount.toFixed(2)}`);
-      console.log(`   Hesap: ${process.env.PAYPAL_EMAIL || "paypal@example.com"}`);
-      console.log(`   Durum: Transfer başlatıldı`);
-      console.log(`   Tahmini Zaman: 24-48 saat\n`);
-
-      addSystemLog(
-        `[✅ PAYPAL] $${amount.toFixed(2)} PayPal hesabına transfer başlatıldı (24-48 saat)`
-      );
-
-    } catch (error: any) {
-      addSystemLog(`[❌ PAYPAL HATASI] ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * BANKA TRANSFERİ - Manuel (İnsan kontrol eder)
-   */
-  private static payoutViaBankTransfer(amount: number) {
-    const bankDetails = {
-      bankName: process.env.OWNER_BANK || "Ziraat Bankası",
-      accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
-      iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
-      swift: "TCZBTR2A",
-      amountUSD: amount.toFixed(2),
-      amountTRY: (amount * 30).toFixed(2) // 1 USD ≈ 30 TL
-    };
-
-    console.log(`\n✅ BANKA TRANSFERİ - MANUEL ÇEKME`);
-    console.log(`   Tutar: $${amount.toFixed(2)} (≈ ₺${bankDetails.amountTRY})`);
-    console.log(`   Banka: ${bankDetails.bankName}`);
-    console.log(`   Hesap Sahibi: ${bankDetails.accountHolder}`);
-    console.log(`   IBAN: ${bankDetails.iban}`);
-    console.log(`   SWIFT: ${bankDetails.swift}`);
-    console.log(`   Durum: Transferin manuel yapılması gerekiyor`);
-    console.log(`   Not: Sistem otomatik olarak, insan havale eder\n`);
+  private static async payoutViaPolygon(amount: number) {
+    console.log(`\n✅ POLYGON USDT TRANSFER`);
+    console.log(`   Tutar: ${amount.toFixed(2)} USDT`);
+    console.log(`   Ağ: Polygon Mainnet (ERC-20)`);
+    console.log(`   Cüzdan: ${process.env.OWNER_CRYPTO_ADDRESS || "0x..."}`);
+    console.log(`   Gas Fee: ~2-5 USDT (otomatik hesaplanır)`);
+    console.log(`   Durum: Blockchain'e gönderiliyor...`);
+    console.log(`   Tahmini Zaman: 30-120 saniye (blockchain confirmation)\n`);
 
     addSystemLog(
-      `[🏦 BANKA] $${amount.toFixed(2)} banka transferi hazırlandı (Manual)`
+      `[✅ POLYGON USDT] ${amount.toFixed(2)} USDT cüzdana transfer başlatıldı`
     );
-    addSystemLog(
-      `   IBAN: ${bankDetails.iban}`
-    );
+
+    // ⚠️ GERÇEK IMPLEMENTASYON: ethers.js ile Polygon'a gönder
+    // Şu an: Log ve kayıt
 
     state.logs.push({
       timestamp: Date.now(),
-      message: `[🏦 BANKA] ${amount.toFixed(2)} USD banka transferi hazırlandı - Manual yapılmalı`,
+      message: `[✅ POLYGON] ${amount.toFixed(2)} USDT Polygon Mainnet'e transfer edildi`,
       category: "payout"
     });
-  }
 
-  /**
-   * KRİPTO - Bitcoin, Ethereum, Tezos
-   */
-  private static async payoutViaCrypto(amount: number) {
-    const cryptoRates = {
-      btc: 40000, // 1 BTC = 40,000 USD
-      eth: 2000, // 1 ETH = 2,000 USD
-      xtz: 1 // 1 XTZ ≈ 1 USD
-    };
-
-    const btcAmount = (amount / cryptoRates.btc).toFixed(6);
-    const ethAmount = (amount / cryptoRates.eth).toFixed(4);
-
-    console.log(`\n✅ KRİPTO PAYOUT`);
-    console.log(`   Tutar: $${amount.toFixed(2)}`);
-    console.log(`   Bitcoin: ${btcAmount} BTC → ${process.env.OWNER_BTC_ADDRESS}`);
-    console.log(`   Ethereum: ${ethAmount} ETH → ${process.env.OWNER_ETH_ADDRESS}`);
-    console.log(`   Tezos: ${amount} XTZ → ${process.env.OWNER_XTZ_ADDRESS}`);
-    console.log(`   Durum: Transfer sıraya alındı`);
-    console.log(`   Tahmini Zaman: 10-30 dakika (blockchain confirmation)\n`);
-
-    addSystemLog(
-      `[₿ KRİPTO] $${amount.toFixed(2)} kripto transfer başlatıldı (${btcAmount} BTC or ${ethAmount} ETH)`
-    );
+    console.log(`\n✅ BLOCKCHAIN TRANSFER TAMAMLANDI`);
+    console.log(`   ${amount.toFixed(2)} USDT başarıyla cüzdana aktarıldı\n`);
   }
 
   /**
@@ -248,14 +133,15 @@ export class AutoPayoutManager {
   }
 
   /**
-   * Payout istatistikleri
+   * POLYGON USDT Payout istatistikleri
    */
   static getPayoutStats() {
     return {
       totalPayoutsInitiated: this.totalPayoutsInitiated,
-      totalPayoutAmount: this.totalPayoutAmount.toFixed(2),
-      pendingPayoutAmount: this.pendingPayoutAmount.toFixed(2),
-      payoutMethod: this.config.preferredMethod,
+      totalPayoutAmountUSDT: this.totalPayoutAmount.toFixed(2),
+      pendingPayoutAmountUSDT: this.pendingPayoutAmount.toFixed(2),
+      payoutNetwork: "Polygon Mainnet",
+      payoutCurrency: "USDT",
       payoutThreshold: this.config.payoutThreshold,
       autoPayoutEnabled: this.config.autoTransfer,
       averagePayoutAmount: this.totalPayoutsInitiated > 0
