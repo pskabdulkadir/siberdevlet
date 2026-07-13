@@ -63,16 +63,6 @@ export class AdminPanel {
   // Manual Transfer History
   private static manualTransfers: ManualTransfer[] = [];
 
-  // Şifre hashleme (basit, güvenli ortamda bcrypt kullan)
-  private static hashPassword(password: string): string {
-    return crypto.createHash("sha256").update(password).digest("hex");
-  }
-
-  // Admin password hash (lazy computed)
-  private static getAdminPasswordHash(): string {
-    return this.hashPassword(this.ADMIN_PASSWORD);
-  }
-
   /**
    * Startup'da DB'den havuzu yükle
    */
@@ -109,24 +99,23 @@ export class AdminPanel {
    * Admin Login - Session oluştur
    */
   static login(email: string, password: string): { success: boolean; sessionId?: string; error?: string } {
-    console.log(`[🔐 LOGIN CHECK]`);
-    console.log(`   Expected Email: ${this.ADMIN_EMAIL}`);
-    console.log(`   Received Email: ${email}`);
-    console.log(`   Email Match: ${email === this.ADMIN_EMAIL}`);
+    console.log(`[🔐 LOGIN DENEME]`);
+    console.log(`   Email: ${email} (Beklenen: ${this.ADMIN_EMAIL})`);
+    console.log(`   Şifre: ${password?.substring(0, 3)}*** (Beklenen: ${this.ADMIN_PASSWORD?.substring(0, 3)}***)`);
 
+    // Email kontrolü
     if (email !== this.ADMIN_EMAIL) {
+      console.log(`   ❌ Email eşleşmedi`);
       return { success: false, error: "Email veya şifre yanlış" };
     }
 
-    const passwordHash = this.hashPassword(password);
-    const expectedHash = this.getAdminPasswordHash();
-    console.log(`   Expected Hash: ${expectedHash.substring(0, 20)}...`);
-    console.log(`   Received Hash: ${passwordHash.substring(0, 20)}...`);
-    console.log(`   Hash Match: ${passwordHash === expectedHash}`);
-
-    if (passwordHash !== expectedHash) {
+    // Şifre kontrolü (doğrudan karşılaştır)
+    if (password !== this.ADMIN_PASSWORD) {
+      console.log(`   ❌ Şifre eşleşmedi`);
       return { success: false, error: "Email veya şifre yanlış" };
     }
+
+    console.log(`   ✅ Email ve şifre doğru`);
 
     // Session oluştur (24 saat geçerli)
     const sessionId = `session-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
