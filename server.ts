@@ -17,12 +17,11 @@ function initializeAutonomousEnvironment() {
   process.env.PORT = process.env.PORT || "3000";
   console.log(`[SİBER-KURULUM] 🌐 PORT ayarlandı: ${process.env.PORT}`);
 
-  // 2. DATABASE_URL: Gerçek PostgreSQL yoksa In-Memory Ledger
-  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes("fake")) {
-    console.log(
-      "[SİBER-KURULUM] 💾 Gerçek veritabanı bulunamadı. 'Bellek İçi (In-Memory) Ledger' aktif edildi. Kayıtlar RAM üzerinde tutuluyor."
-    );
-    process.env.DATABASE_URL = "local_memory_fallback";
+  // 2. DATABASE_URL: SQLite dosya yolu ayarlanacak
+  // Render'da: /var/data/wallet.db
+  // Dev'de: ./data.db
+  if (!process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = "file:./data.db";
   }
 
   // v20.0: KURUCU BİLGİLERİ - GERÇEK USDT TRC-20 + QNB FINANSBANK API
@@ -2373,18 +2372,23 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-
-    // v21.0: ADMIN PANEL ENDPOINTS
-    app.use(AdminEndpoints);
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
+  // v21.0: ADMIN PANEL ENDPOINTS (Her iki moda da aktif)
+  app.use(AdminEndpoints);
+
   // Fallback 404 handler
   app.use((req, res) => {
     console.warn(`[404] ${req.method} ${req.path}`);
     res.status(404).json({ error: "Not Found", path: req.path });
+  });
+
+  // v21.0: Startup'ta DB'den Wallet Havuzunu Yükle
+  await AdminPanel.loadWalletPoolFromDB().catch(err => {
+    console.error(`[⚠️ HAVUZ LOAD HATASI] ${err.message}`);
   });
 
   server.listen(PORT, "0.0.0.0", () => {

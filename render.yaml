@@ -10,9 +10,13 @@ services:
       # ⚠️ Boşta bırakılabilir - Sistem otonom kurulum yapar
       - key: PORT
         value: "3000"
-      # v13.5: SQLite Database - In-memory fallback (migration issues workaround)
+      # v21.0: SQLite Database - Kalıcı depolama
       - key: DATABASE_URL
-        value: "file:./data_fake"
+        value: "file:/var/data/wallet.db"
+    disk:
+      - name: wallet_data
+        mountPath: /var/data
+        sizeGB: 1
       # Polygon USDT - Canlı para transfer
       - key: POLYGON_RPC_URL
         value: "https://polygon-rpc.com"
