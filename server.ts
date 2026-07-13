@@ -30,7 +30,7 @@ function initializeAutonomousEnvironment() {
   process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
   process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn";
   process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY || "";
-  process.env.TRON_RPC_URL = process.env.TRON_RPC_URL || "https://api.tronstack.com/jsonrpc";
+  process.env.TRON_RPC_URL = process.env.TRON_RPC_URL || "https://api.trongrid.io/jsonrpc";
 
   // QNB Finansbank Open Banking API Credentials
   process.env.QNB_API_KEY = process.env.QNB_API_KEY || ""; // api.qnbfinansbank.com bearer token

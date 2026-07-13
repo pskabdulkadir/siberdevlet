@@ -13,10 +13,9 @@ services:
       # v21.0: SQLite Database - Kalıcı depolama
       - key: DATABASE_URL
         value: "file:/var/data/wallet.db"
-    disk:
-      - name: wallet_data
-        mountPath: /var/data
-        sizeGB: 1
+      # TRON RPC - Stabil ve Resmi
+      - key: TRON_RPC_URL
+        value: "https://api.trongrid.io/jsonrpc"
       # Polygon USDT - Canlı para transfer
       - key: POLYGON_RPC_URL
         value: "https://polygon-rpc.com"
@@ -27,3 +26,7 @@ services:
       # Açık kaynak AI fallback
       # - key: GEMINI_API_KEY
       #   value: ""
+    disk:
+      - name: wallet_data
+        mountPath: /var/data
+        sizeGB: 1
