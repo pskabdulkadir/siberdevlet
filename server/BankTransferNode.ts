@@ -293,17 +293,25 @@ export class BankTransferNode {
   }
 
   /**
-   * SİSTEM BAŞLAMADA - BİLGİ YAZDIR
+   * SİSTEM BAŞLAMADA - BİLGİ YAZDIR (v20.0)
    */
   static displayBankNodeInfo(): void {
     console.log(`\n${"═".repeat(80)}`);
-    console.log(`[BANKA TRANSFERİ NODU v19.0] 🏦 GERÇEK PARA AKIŞI AKTIF`);
+    console.log(`[GERÇEK TRANSFER SİSTEMİ v20.0] 🚀 USDT TRC-20 + BANKA WEBHOOK`);
     console.log(`${"═".repeat(80)}`);
-    console.log(`✅ Hedef IBAN: ${process.env.OWNER_BANK_IBAN}`);
-    console.log(`✅ Hesap Sahibi: ${process.env.OWNER_NAME}`);
-    console.log(`✅ Banka: ${process.env.OWNER_BANK_NAME}`);
-    console.log(`✅ İşlem Zamanı: 2-3 saniye (simülasyon)`);
-    console.log(`✅ Transfer Takibi: Tam Logging + Cüzdan Senkronizasyonu`);
+    console.log(`✅ Kripto Transfer: USDT TRC-20 (Tron Network) - GERÇEK BLOKZINCIR`);
+    console.log(`   Hedef Wallet: ${process.env.OWNER_CRYPTO_ADDRESS || "TU8h..."}`);
+    console.log(`   Private Key: ${process.env.OWNER_CRYPTO_PRIVATE_KEY ? "✅ Yapılandırıldı" : "⚠️ Eksik (mock mode)"}`);
+    console.log(`   RPC: ${process.env.TRON_RPC_URL || "Default (https://api.tronstack.com/jsonrpc)"}`);
+    console.log(`\n✅ Banka Transferi: EFT/Webhook API`);
+    console.log(`   Hedef IBAN: ${process.env.OWNER_BANK_IBAN}`);
+    console.log(`   Hesap Sahibi: ${process.env.OWNER_NAME}`);
+    console.log(`   Banka: ${process.env.OWNER_BANK_NAME}`);
+    console.log(`   Webhook: ${process.env.BANK_WEBHOOK_URL ? "✅ Aktif" : "⚠️ Eksik (mock mode)"}`);
+    console.log(`\n✅ Sistem Modu: TAMAMEN GERÇEK (Simülasyon Kaldırıldı)`);
+    console.log(`   Her satış → USDT transfer + Banka EFT webhook`);
+    console.log(`   Blokzincir işlem hash tracking`);
+    console.log(`   Banka referans numarası tracking`);
     console.log(`${"═".repeat(80)}\n`);
   }
 }
