@@ -25,10 +25,14 @@ function initializeAutonomousEnvironment() {
     process.env.DATABASE_URL = "local_memory_fallback";
   }
 
-  // v18.0: KURUCU BİLGİLERİ - SADECE BANKA/CÜZDAN TRANSFERİ
+  // v20.0: KURUCU BİLGİLERİ - GERÇEK USDT TRC-20 + BANKA TRANSFERI
   process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
   process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
   process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
+  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn";
+  process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY || "";
+  process.env.TRON_RPC_URL = process.env.TRON_RPC_URL || "https://api.tronstack.com/jsonrpc";
+  process.env.BANK_WEBHOOK_URL = process.env.BANK_WEBHOOK_URL || ""; // Banka webhook (opsiyonel)
   process.env.OWNER_IBAN = process.env.OWNER_BANK_IBAN; // TUTARLILIĞI SAĞLA
   process.env.OWNER_BANK = process.env.OWNER_BANK_NAME; // TUTARLILIĞI SAĞLA
 
