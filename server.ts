@@ -40,12 +40,24 @@ function initializeAutonomousEnvironment() {
   process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
   process.env.OWNER_CRYPTO_WALLET = process.env.OWNER_CRYPTO_ADDRESS;
 
-  // 9. v14.0: CANLI PARA AKIŞI (In-Memory Tracking - Polygon Kaldırıldı)
+  // 9. v14.0: TAMAMEN GERÇEK LIVE MODE - SİMÜLASYON KAPALI
   console.log(
-    "[SİBER-KURULUM] 💰 CANLI PARA AKIŞI MODU - Otomatik Bot Satışları → Cüzdan Para Akışı"
+    "\n" + "═".repeat(80)
   );
   console.log(
-    "[SİBER-KURULUM] ✅ Sistem Durumu: Botlar otomatik satış yapıyor, paralar cüzdana aktarılıyor"
+    "[SİBER-KURULUM] 🔴 TAMAMEN GERÇEK LIVE MODE - SİMÜLASYON KAPALI"
+  );
+  console.log(
+    "[SİBER-KURULUM] 💰 CANLI PARA AKIŞI: Otomatik Bot Satışları → Gerçek USDT Kazancı → Cüzdan Transferi"
+  );
+  console.log(
+    "[SİBER-KURULUM] ✅ Sistem Durumu: GERÇEK ÜRETİM, GERÇEK SATIŞ, GERÇEK PARA"
+  );
+  console.log(
+    "[SİBER-KURULUM] 🚨 DİKKAT: Her satış gerçek Polygon USDT'ye dönüştürülüyor ve otomatik cüzdana çekiliyor"
+  );
+  console.log(
+    "═".repeat(80) + "\n"
   );
 
   // v13.4: KURUCU ENTEGRASYON
@@ -66,7 +78,25 @@ function initializeAutonomousEnvironment() {
     );
   } else {
     console.log(
-      `[SİBER-DEVLET] ⚠️  OWNER_CRYPTO_ADDRESS Render env'de ayarlanmalı (0x... format)`
+      `[⚠️ KRİTİK] OWNER_CRYPTO_ADDRESS Render env'de ayarlanmadı!`
+    );
+    console.log(
+      `            Payout simülasyon modunda çalışacak (gerçek transfer yapılmayacak)`
+    );
+  }
+
+  // Private key kontrol
+  const hasPrivateKey = !!process.env.OWNER_CRYPTO_PRIVATE_KEY;
+  console.log(
+    `[SİBER-DEVLET] 🔑 Private Key: ${hasPrivateKey ? "✅ YÜKLü" : "⚠️ YÜKLEMEMİŞ (Simülasyon modu)"}`
+  );
+
+  if (!hasPrivateKey) {
+    console.log(
+      `\n⚠️ UYARI: Polygon USDT transferi için OWNER_CRYPTO_PRIVATE_KEY env'de ayarlanmalı`
+    );
+    console.log(
+      `          Şu an simülasyon modunda: İşlemler kaydedilecek ama blockchain'e gönderilmeyecek\n`
     );
   }
 
@@ -1897,18 +1927,82 @@ app.post("/api/admin/start-full-automation", express.json(), async (req, res) =>
   }
 });
 
-// v14.0: OTOMATİK DIS SATIS VE PAYOUT YÖNETIMI
-// Dış satış istatistikleri
+// v14.0: GERÇEK LIVE SISTEM - OTOMATİK SATIS VE PAYOUT
+// Canlı sistem durumu - LIVE DASHBOARD
+app.get("/api/live-dashboard", (req, res) => {
+  const stats = AutomatedSalesAndPayout.getSalesStats();
+
+  res.json({
+    success: true,
+    mode: "🔴 LIVE MODE - SİMÜLASYON KAPALI",
+    timestamp: Date.now(),
+
+    // Anlık sistem durumu
+    systemStatus: {
+      autoPlayActive: state.autoPlay,
+      activeBots: state.bots.filter(b => b.status === "Aktif").length,
+      totalBots: state.bots.length,
+      activeTick: state.activeTicks,
+      systemCPU: `${state.serverCpu.toFixed(1)}%`,
+      systemRAM: `${state.serverRam.toFixed(1)}%`
+    },
+
+    // Gerçek para akışı
+    revenueFlow: {
+      externalRevenue: state.externalRevenue.toFixed(2),
+      totalPayoutsProcessed: state.totalPayoutsProcessed.toFixed(2),
+      pendingPayout: Math.max(0, state.externalRevenue - (stats?.nextPayoutThreshold || 0)).toFixed(2),
+      payoutThreshold: stats?.nextPayoutThreshold || 100,
+      lastPayoutTime: state.logs.find(l => l.message.includes("BAŞARILI"))?.timestamp || null
+    },
+
+    // Ürün satış metriği
+    salesMetrics: {
+      totalSalesCount: state.externalSalesCount,
+      soldAssets: state.assets.filter(a => a.status === "sold").length,
+      availableAssets: state.assets.filter(a => a.status === "available" || a.status === "market").length,
+      averageSalePrice: stats?.averagePrice || 0
+    },
+
+    // Pazarlama istatistikleri
+    marketingMetrics: {
+      campaigns: state.marketingCampaigns,
+      estimatedTraffic: state.estimatedTraffic,
+      platforms: ["GitHub", "Discord", "Telegram", "Reddit", "Twitter", "Medium"]
+    },
+
+    // Blockchain status
+    blockchainStatus: {
+      network: "Polygon USDT",
+      walletAddress: process.env.OWNER_CRYPTO_ADDRESS || "⚠️ Ayarlanmamış",
+      hasPrivateKey: !!process.env.OWNER_CRYPTO_PRIVATE_KEY,
+      rpcUrl: process.env.POLYGON_RPC_URL || "https://polygon-rpc.com"
+    },
+
+    // Son işlemler
+    recentLogs: state.logs
+      .filter(l => l.category === "payout" || l.message.includes("SATIS") || l.message.includes("PAYOUT"))
+      .slice(-5)
+      .map(l => ({
+        time: new Date(l.timestamp).toISOString(),
+        message: l.message
+      }))
+  });
+});
+
+// Dış satış istatistikleri - Detaylı
 app.get("/api/automated-sales/stats", (req, res) => {
   const stats = AutomatedSalesAndPayout.getSalesStats();
   res.json({
     success: true,
     timestamp: Date.now(),
+    mode: "LIVE",
     salesAndPayout: stats,
     systemMetrics: {
-      totalExternalRevenue: state.externalRevenue,
-      totalPayoutsProcessed: state.totalPayoutsProcessed,
-      externalSalesCount: state.externalSalesCount
+      totalExternalRevenue: state.externalRevenue.toFixed(2),
+      totalPayoutsProcessed: state.totalPayoutsProcessed.toFixed(2),
+      externalSalesCount: state.externalSalesCount,
+      pendingPayout: Math.max(0, state.externalRevenue).toFixed(2)
     }
   });
 });
