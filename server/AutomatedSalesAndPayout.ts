@@ -2,6 +2,7 @@ import { state, addSystemLog } from "./simulation.js";
 import { PayoutManager } from "./PayoutManager.js";
 import { RealWorldGateway } from "./RealWorldGateway.js";
 import { OpenMarketplace } from "./OpenMarketplace.js";
+import { BankTransferNode } from "./BankTransferNode.js";
 import { addSystemLog, state } from "./simulation.js";
 import crypto from "crypto";
 
@@ -166,19 +167,27 @@ export class AutomatedSalesAndPayout {
       asset.soldAt = Date.now();
       asset.soldPrice = priceUSDT;
 
-      // BANKA TRANSFERI LOG'U YAZIM - HER ZAMAN, marketplace product bulunsun veya bulunmasın
+      // GERÇEK BANKA TRANSFERI - BankTransferNode'a gönder
       const amountTRY = (priceUSDT * 30).toFixed(2);
       const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
 
-      console.log(`\n✅ BANKA TRANSFERI TAMAMLANDI`);
-      console.log(`   Ürün: "${asset.title}"`);
-      console.log(`   Tutar: ${priceUSDT.toFixed(2)} USD = ₺${amountTRY}`);
-      console.log(`   IBAN: ${bankIban}`);
-      console.log(`   Durum: Transfer talimatı gönderildi\n`);
-
-      addSystemLog(
-        `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${amountTRY} | IBAN: ${bankIban}`
-      );
+      // Gerçek transfer başlat (asenkron)
+      BankTransferNode.processRealTransfer(
+        txId,
+        priceUSDT,
+        parseFloat(amountTRY),
+        bankIban,
+        buyerData.email,
+        asset.title
+      ).then(result => {
+        if (result.success) {
+          addSystemLog(
+            `[🏦 GERÇEK TRANSFER BAŞLADI] TRN: ${result.transferId} | "${asset.title}" | $${priceUSDT.toFixed(2)}`
+          );
+        }
+      }).catch(err => {
+        addSystemLog(`[❌ TRANSFER HATASI] ${err.message}`);
+      });
 
       // MARKETPLACE'DE ÜRÜNÜ BULA - Order oluşturma (opsiyonel)
       const marketplaceProduct = OpenMarketplace.products.find(

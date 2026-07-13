@@ -29,6 +29,8 @@ function initializeAutonomousEnvironment() {
   process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
   process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
   process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
+  process.env.OWNER_IBAN = process.env.OWNER_BANK_IBAN; // TUTARLILIĞI SAĞLA
+  process.env.OWNER_BANK = process.env.OWNER_BANK_NAME; // TUTARLILIĞI SAĞLA
 
   // v18.0: TAMAMEN GERÇEK LIVE MODE - BANKA/CÜZDAN TRANSFERI
   console.log(
@@ -151,6 +153,9 @@ function initializeAutonomousEnvironment() {
   console.log(
     "[SİBER-KURULUM] ✅ Otonom Ortam Kurulumu Tamamlandı. Sistem çalışmaya hazır!"
   );
+
+  // BANKA TRANSFERI NODU BAŞLAT
+  BankTransferNode.displayBankNodeInfo();
 }
 
 // Uygulama başlamadan önce env setup'ı çalıştır
@@ -177,6 +182,7 @@ import { StateManager } from "./server/StateManager.js";
 import { BackupManager } from "./server/BackupManager.js";
 import { BotRole, BotMinistry, BotStatus } from "./src/types.js";
 import { RealWorldGateway } from "./server/RealWorldGateway.js";
+import { BankTransferNode } from "./server/BankTransferNode.js";
 import { AutomationManager } from "./server/AutomationManager.js";
 import { PolygonValidator } from "./server/PolygonValidator.js";
 import { ExternalApiMarket } from "./server/ExternalApiMarket.js";
@@ -2138,6 +2144,30 @@ app.get("/api/payout/stats", (req, res) => {
     success: true,
     timestamp: Date.now(),
     payout: stats
+  });
+});
+
+// GERÇEK BANKA TRANSFERI - Cüzdan Durumu ve Transfer Geçmişi
+app.get("/api/bank/wallet-status", (req, res) => {
+  const balance = BankTransferNode.getWalletBalance();
+  const stats = BankTransferNode.getStats();
+  res.json({
+    success: true,
+    timestamp: Date.now(),
+    wallet: balance,
+    transfers: stats
+  });
+});
+
+// Transfer Geçmişi (Son 50)
+app.get("/api/bank/transfer-history", (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const history = BankTransferNode.getTransferHistory(limit);
+  res.json({
+    success: true,
+    timestamp: Date.now(),
+    transfers: history,
+    totalCount: history.length
   });
 });
 
