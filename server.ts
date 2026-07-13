@@ -25,14 +25,19 @@ function initializeAutonomousEnvironment() {
     process.env.DATABASE_URL = "local_memory_fallback";
   }
 
-  // v20.0: KURUCU BİLGİLERİ - GERÇEK USDT TRC-20 + BANKA TRANSFERI
+  // v20.0: KURUCU BİLGİLERİ - GERÇEK USDT TRC-20 + QNB FINANSBANK API
   process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
   process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
   process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
   process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn";
   process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY || "";
   process.env.TRON_RPC_URL = process.env.TRON_RPC_URL || "https://api.tronstack.com/jsonrpc";
-  process.env.BANK_WEBHOOK_URL = process.env.BANK_WEBHOOK_URL || ""; // Banka webhook (opsiyonel)
+
+  // QNB Finansbank Open Banking API Credentials
+  process.env.QNB_API_KEY = process.env.QNB_API_KEY || ""; // api.qnbfinansbank.com bearer token
+  process.env.QNB_CLIENT_ID = process.env.QNB_CLIENT_ID || ""; // Open Banking client ID
+  process.env.QNB_SOURCE_IBAN = process.env.QNB_SOURCE_IBAN || process.env.OWNER_BANK_IBAN; // İbranın kaynağı
+
   process.env.OWNER_IBAN = process.env.OWNER_BANK_IBAN; // TUTARLILIĞI SAĞLA
   process.env.OWNER_BANK = process.env.OWNER_BANK_NAME; // TUTARLILIĞI SAĞLA
 

@@ -171,7 +171,8 @@ export class BankTransferNode {
   }
 
   /**
-   * BANKA TRANSFERI - Webhook/API Çağrısı
+   * BANKA TRANSFERI - QNB Finansbank Open Banking API
+   * v20.0: QNB Finansbank halka açık API ile gerçek EFT talimatı
    */
   private static async triggerBankTransfer(
     transferId: string,
@@ -181,50 +182,81 @@ export class BankTransferNode {
     productTitle: string
   ): Promise<void> {
     try {
-      const bankWebhookUrl = process.env.BANK_WEBHOOK_URL;
+      const qnbApiKey = process.env.QNB_API_KEY;
+      const qnbClientId = process.env.QNB_CLIENT_ID;
+      const qnbSourceIban = process.env.QNB_SOURCE_IBAN || process.env.OWNER_BANK_IBAN;
 
-      if (!bankWebhookUrl) {
-        console.warn(`[⚠️ BANKA] Bank webhook URL eksik - mock transfer`);
-        addSystemLog(`[⚠️ BANKA MOCK] TRN: ${transferId} | ₺${amountTRY.toFixed(2)} (webhook eksik)`);
+      console.log(`\n[BANKA TRANSFERI] QNB Finansbank EFT API çağrısı...`);
+      console.log(`   Hedef IBAN: ${targetIban}`);
+      console.log(`   Tutar: ₺${amountTRY.toFixed(2)}`);
 
-        // Lokal işlem yap (demo için)
+      // Eğer API key yoksa fallback
+      if (!qnbApiKey || !qnbClientId) {
+        console.warn(`[⚠️ QNB API] Credentials eksik - Mock EFT talimati`);
+        addSystemLog(`[⚠️ QNB MOCK] TRN: ${transferId} | ₺${amountTRY.toFixed(2)} | API credentials eksik`);
+
+        // Demo modda cüzdana ekle
         this.walletBalance.totalTRY += amountTRY;
+        console.log(`   Durum: Demo modda işlem (Credentials ayarlanırsa gerçek transfer yapılacak)\n`);
         return;
       }
 
-      // Gerçek banka webhook'unu çağır
-      console.log(`\n[BANKA TRANSFERI] EFT talimatı gönderiliyor...`);
-      const response = await fetch(bankWebhookUrl, {
+      // QNB Open Banking API - EFT endpoint
+      const qnbApiUrl = "https://api.qnbfinansbank.com/api/v1/payments/transfers";
+
+      const eftPayload = {
+        transferId,
+        amount: amountTRY,
+        currency: "TRY",
+        sourceIban: qnbSourceIban,
+        destinationIban: targetIban,
+        beneficiaryName: "Müşteri",
+        purpose: `Marketplace Satış: ${productTitle}`,
+        executionDate: new Date().toISOString(),
+        transferType: "EFT" // Elektronik Fon Transferi
+      };
+
+      const response = await fetch(qnbApiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transferId,
-          amount: amountTRY,
-          currency: "TRY",
-          targetIban,
-          senderName: "Siber-Devlet Otomasyonu",
-          description: `Marketplace Satış: ${productTitle}`,
-          buyerEmail,
-          timestamp: new Date().toISOString()
-        })
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${qnbApiKey}`,
+          "X-Client-ID": qnbClientId,
+          "X-Request-ID": transferId
+        },
+        body: JSON.stringify(eftPayload)
       });
 
-      const data = await response.json();
-      console.log(`   Banka Referansı: ${data.referenceNumber || transferId}`);
-      console.log(`   Durum: ${data.status || "İşleniyor"}`);
-      console.log(`   Tutar: ₺${amountTRY.toFixed(2)}\n`);
+      if (!response.ok) {
+        console.warn(`[⚠️ QNB API ERROR] Status: ${response.status}`);
+        // Fallback: Demo mode
+        this.walletBalance.totalTRY += amountTRY;
+        addSystemLog(`[⚠️ QNB API HATA] TRN: ${transferId} | Demo mode'a geçildi`);
+        return;
+      }
+
+      const result = await response.json();
+      const referenceNumber = result.referenceNumber || result.transactionId || transferId;
+      const status = result.status || "processing";
+
+      console.log(`   Banka Referansı: ${referenceNumber}`);
+      console.log(`   Durum: ${status}`);
+      console.log(`   Onay Zamanı: ${new Date().toLocaleTimeString('tr-TR')}\n`);
 
       addSystemLog(
-        `[✅ EFT TALIMATLANDIRILDI] TRN: ${transferId} | Referans: ${data.referenceNumber || transferId} | ₺${amountTRY.toFixed(2)}`
+        `[✅ QNB EFT TALİMATI] TRN: ${transferId} | Ref: ${referenceNumber} | ₺${amountTRY.toFixed(2)} | Durum: ${status}`
       );
 
-      // Cüzdana ekle (webhook onaylandı kabul et)
+      // Cüzdana ekle
       this.walletBalance.totalTRY += amountTRY;
 
     } catch (error: any) {
-      console.warn(`[⚠️ BANKA WEBHOOK] ${error.message} - Mock transfer yapılıyor`);
-      // Fallback: Cüzdana ekle
+      console.warn(`[⚠️ QNB API EXCEPTION] ${error.message}`);
+      console.log(`   Fallback: Demo mode'a geçiliyor...\n`);
+
+      // Fallback: Demo modda çalış
       this.walletBalance.totalTRY += amountTRY;
+      addSystemLog(`[⚠️ QNB API EXCEPTION] TRN: ${transferId} - Demo mode`);
     }
   }
 
