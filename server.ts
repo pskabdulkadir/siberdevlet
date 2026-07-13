@@ -2372,13 +2372,18 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+  }
+
+  // v21.0: ADMIN PANEL ENDPOINTS (Her iki moda da aktif - wildcard'ın ÖN'Ü)
+  app.use(AdminEndpoints);
+
+  // SPA fallback - wildcard route SON'DA (admin endpoints sonra)
+  if (process.env.NODE_ENV === "production") {
+    const distPath = path.join(process.cwd(), "dist");
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-  // v21.0: ADMIN PANEL ENDPOINTS (Her iki moda da aktif)
-  app.use(AdminEndpoints);
 
   // Fallback 404 handler
   app.use((req, res) => {
