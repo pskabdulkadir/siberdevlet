@@ -28,7 +28,7 @@ function initializeAutonomousEnvironment() {
   process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
   process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
   process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
-  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS;
+  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0xDe0591C5a00Ef61cFA4b5b6b6584B9C979f44C30";
   process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY || "";
   process.env.TRON_RPC_URL = process.env.TRON_RPC_URL || "https://api.trongrid.io/jsonrpc";
 
@@ -69,6 +69,10 @@ function initializeAutonomousEnvironment() {
   );
   console.log(
     `[SİBER-DEVLET] 💳 IBAN: ${process.env.OWNER_BANK_IBAN}`
+  );
+  // v29.0: Kripto Cüzdanı Eklendi
+  console.log(
+    `[SİBER-DEVLET] 🪙 Kripto Cüzdan (Polygon USDT): ${process.env.OWNER_CRYPTO_ADDRESS}`
   );
 
   // v10.0: SIFIR SERMAYE GÜVENLIK DUVARÜ

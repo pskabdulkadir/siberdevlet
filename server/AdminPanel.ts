@@ -25,6 +25,7 @@ interface AdminSession {
 interface WalletPool {
   totalUSD: number;
   totalTRY: number;
+  totalUSDT_Crypto: number; // v29.0: Kripto gelirleri için ayrı havuz
   totalTransactions: number;
   lastUpdate: number;
   transactions: {
@@ -59,6 +60,7 @@ export class AdminPanel {
   private static walletPool: WalletPool = {
     totalUSD: 0,
     totalTRY: 0,
+    totalUSDT_Crypto: 0, // v29.0
     totalTransactions: 0,
     lastUpdate: Date.now(),
     transactions: []
@@ -83,12 +85,14 @@ export class AdminPanel {
         if (dbPool) {
           this.walletPool.totalUSD = dbPool.totalUSD;
           this.walletPool.totalTRY = dbPool.totalTRY;
+          this.walletPool.totalUSDT_Crypto = dbPool.totalUSDT_Crypto || 0; // v29.0
           this.walletPool.totalTransactions = dbPool.totalTransactions;
           this.walletPool.lastUpdate = Number(dbPool.lastUpdate);
 
           console.log(`\n✅ WALLET HAVUZU YÜKLENDI`);
           console.log(`   Toplam USD: ${dbPool.totalUSD.toFixed(2)}`);
           console.log(`   Toplam TRY: ${dbPool.totalTRY.toFixed(2)}`);
+          console.log(`   Toplam Kripto: ${this.walletPool.totalUSDT_Crypto.toFixed(2)} USDT`);
           console.log(`   İşlem Sayısı: ${dbPool.totalTransactions}`);
           console.log(`   Kaynak: SQLite Database (Kalıcı)\n`);
 
@@ -104,6 +108,7 @@ export class AdminPanel {
               id: "singleton",
               totalUSD: 0,
               totalTRY: 0,
+              totalUSDT_Crypto: 0,
               totalTransactions: 0,
               lastUpdate: BigInt(Date.now())
             }
@@ -200,6 +205,12 @@ export class AdminPanel {
       this.walletPool.totalUSD += amount;
       this.walletPool.totalTRY += amountTRY;
       this.walletPool.totalTransactions += 1;
+
+      // v29.0: Eğer kaynak kripto ise, ayrı havuza da ekle
+      if (source.toLowerCase().includes("usdt") || source.toLowerCase().includes("polygon") || source.toLowerCase().includes("crypto")) {
+        this.walletPool.totalUSDT_Crypto += amount;
+      }
+
       this.walletPool.lastUpdate = Date.now();
 
       console.log(`\n💰 HAVUZA EKLENDİ`);
@@ -237,6 +248,7 @@ export class AdminPanel {
           update: {
             totalUSD: { increment: amount },
             totalTRY: { increment: amountTRY },
+            totalUSDT_Crypto: { increment: this.walletPool.totalUSDT_Crypto },
             totalTransactions: { increment: 1 },
             lastUpdate: BigInt(Date.now())
           }

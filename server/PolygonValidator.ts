@@ -14,7 +14,7 @@ export class PolygonValidator {
   private static readonly USDT_ADDRESS = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
   
   // Receiver wallet (bizim cüzdan)
-  private static readonly RECEIVER_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
+  private static readonly RECEIVER_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0xDe0591C5a00Ef61cFA4b5b6b6584B9C979f44C30";
 
   /**
    * Polygon RPC provider'ı başlat

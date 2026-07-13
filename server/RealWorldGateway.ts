@@ -366,7 +366,7 @@ export class RealWorldGateway {
       buyerId,
       productId: product.id,
       amount: buyAmount,
-      paymentMethod: "BANK_TRANSFER", // v24.0: Otomatik alıcılar da artık banka transferi simüle eder.
+      paymentMethod: "USDT_POLYGON", // v29.0: Otomatik alıcılar artık kripto ile ödeme yapar.
       status: "pending",
       createdAt: now,
       transactionHash: `auto-tx-${Math.random().toString(36).substring(2, 15)}`
