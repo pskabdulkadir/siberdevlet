@@ -3251,82 +3251,45 @@ export const justiceQueue = new SimulationQueue("justice-queue");`}</pre>
                 <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
                   <h3 className="text-xs font-display font-bold text-slate-200 uppercase tracking-widest border-b border-slate-800 pb-3 mb-4 flex items-center space-x-2">
                     <Sparkles className="h-4 w-4 text-fuchsia-400" />
-                    <span>PAZARA YENİ ESER / ÜRÜN SÜR</span>
+                    <span>🤖 OTOMATIK PAZARLAMA SİSTEMİ</span>
                   </h3>
-                  
-                  <form onSubmit={handleSaveAsset} className="space-y-3.5">
-                    <div>
-                      <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">Eser Başlığı (Title)</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Örn: Borsa Tahmin Botu v2.0"
-                        value={assetFormTitle}
-                        onChange={(e) => setAssetFormTitle(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                      />
+
+                  <div className="space-y-4">
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-lg p-3.5">
+                      <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
+                        ✅ <strong>Otomatik Üretim</strong><br/>
+                        Botlar 24/7 ürün üretiyor
+                      </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">Eser Tipi (Type)</label>
-                        <select
-                          value={assetFormType}
-                          onChange={(e) => setAssetFormType(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                        >
-                          <option value="Makale">Makale (Article)</option>
-                          <option value="Kod">Kod (Source Code)</option>
-                          <option value="Veri Analizi">Veri Analizi (Data)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">Pazar Fiyatı (GAIA)</label>
-                        <input
-                          type="number"
-                          required
-                          value={assetFormPrice}
-                          onChange={(e) => setAssetFormPrice(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                        />
-                      </div>
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-lg p-3.5">
+                      <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
+                        ✅ <strong>Otomatik Pazara Yayın</strong><br/>
+                        Ürünler otomatik marketplace'e listeleniyor
+                      </p>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">Yazar Adı (Author)</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Örn: Alpha-Mimar v1"
-                        value={assetFormCreator}
-                        onChange={(e) => setAssetFormCreator(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                      />
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-lg p-3.5">
+                      <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
+                        ✅ <strong>Otomatik Satış</strong><br/>
+                        Dış alıcılar otomatik satın alıyor
+                      </p>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">Eser İçeriği / Kod Bloğu (Content)</label>
-                      <textarea
-                        required
-                        rows={4}
-                        placeholder="Eserin detaylı teknik içeriği veya kod blokları..."
-                        value={assetFormContent}
-                        onChange={(e) => setAssetFormContent(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono resize-none leading-relaxed"
-                      />
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-lg p-3.5">
+                      <p className="text-[10px] text-slate-300 font-mono leading-relaxed">
+                        ✅ <strong>Otomatik Para Çekimi</strong><br/>
+                        Satış tutarları cüzdana otomatik aktarılıyor
+                      </p>
                     </div>
 
-                    <div className="pt-2">
-                      <button
-                        type="submit"
-                        disabled={isActionLoading}
-                        className="w-full bg-fuchsia-500 hover:bg-fuchsia-600 disabled:bg-slate-800 text-slate-950 font-bold text-xs py-2.5 px-3 rounded-lg transition duration-150 flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        <span>ESERİ MAĞAZAYA SÜR (PUBLISH)</span>
-                      </button>
+                    <div className="bg-green-950/20 border border-green-900/50 rounded-lg p-3.5">
+                      <p className="text-[10px] text-green-300 font-mono font-bold">
+                        🚀 SİSTEM TAMAMEN OTOMATIK ÇALIŞIYOR<br/>
+                        Manuel müdahale gerekmiyor
+                      </p>
                     </div>
-                  </form>
+                  </div>
                 </div>
 
                 {/* Right: Current Assets list in Market (7 columns) */}
