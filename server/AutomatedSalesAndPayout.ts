@@ -170,7 +170,9 @@ export class AutomatedSalesAndPayout {
 
       // v21.0: HAVUZA EKLE - Transfer YAPMA, admin manuel tetikleyecek
       const amountTRY = priceUSDT * 30;
-      AdminPanel.addToWalletPool(priceUSDT, amountTRY, `Dış Satış: ${buyerData.company}`, txId);
+      AdminPanel.addToWalletPool(priceUSDT, amountTRY, `Dış Satış: ${buyerData.company}`, txId).catch(err => {
+        console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+      });
 
       // MARKETPLACE'DE ÜRÜNÜ BULA - Order oluşturma (opsiyonel)
       const marketplaceProduct = OpenMarketplace.products.find(

@@ -595,6 +595,12 @@ app.post(["/api/simulation/reset", "/api/simulasyon/sifirla", "/api/simülasyon/
   activeSubscriptions.length = 0;
 
   seedInitialSimulation();
+
+  // v21.0: DB'den Wallet Havuzunu Yükle (asenkron)
+  AdminPanel.loadWalletPoolFromDB().catch(err => {
+    console.error(`[⚠️ HAVUZ LOAD HATASI] ${err.message}`);
+  });
+
   addSystemLog("[Sistem] Tüm simülasyon, loglar, eserler ve kuyruklar sıfırlandı. Otonom çalışma durduruldu.");
   res.json({ success: true, state });
 });

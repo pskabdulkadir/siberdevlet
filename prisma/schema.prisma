@@ -127,8 +127,45 @@ model BackupLog {
   backupSize        Int
   success           Boolean
   errorMessage      String?
-  
+
   createdAt         DateTime  @default(now())
-  
+
   @@map("backup_logs")
+}
+
+// v21.0: WALLET HAVUZU - KALICI DEPOLAMA
+model WalletPool {
+  id                String    @id @default("singleton")
+  totalUSD          Float     @default(0)
+  totalTRY          Float     @default(0)
+  totalTransactions Int       @default(0)
+  lastUpdate        BigInt    @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("wallet_pool")
+}
+
+// v21.0: WALLET İŞLEM KAYITLERI
+model WalletTransaction {
+  id                String    @id @default(cuid())
+  poolId            String    @default("singleton")
+  amount            Float
+  amountTRY         Float
+  source            String    // "Dış Satış", "Marketplace", vb
+  status            String    @default("pooled") // pooled, transferred
+  orderId           String    @unique
+  timestamp         BigInt
+
+  // Transfer bilgileri (varsa)
+  transferId        String?   @unique
+  walletAddress     String?
+  txHash            String?
+  transferStatus    String?   // pending, success, failed
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("wallet_transactions")
 }

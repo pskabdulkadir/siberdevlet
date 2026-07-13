@@ -1,13 +1,16 @@
 /**
  * ADMIN PANEL v21.0
  * - Login sistemi
- * - Wallet Havuzu yönetimi
+ * - Wallet Havuzu yönetimi (Prisma SQLite ile kalıcı)
  * - Manual transfer tetikleme
  * - Dashboard istatistikleri
  */
 
 import { addSystemLog } from "./simulation.js";
+import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
+
+const prisma = new PrismaClient();
 
 interface AdminSession {
   sessionId: string;
@@ -68,6 +71,38 @@ export class AdminPanel {
   }
 
   /**
+   * Startup'da DB'den havuzu yükle
+   */
+  static async loadWalletPoolFromDB(): Promise<void> {
+    try {
+      const dbPool = await prisma.walletPool.findUnique({
+        where: { id: "singleton" }
+      });
+
+      if (dbPool) {
+        this.walletPool.totalUSD = dbPool.totalUSD;
+        this.walletPool.totalTRY = dbPool.totalTRY;
+        this.walletPool.totalTransactions = dbPool.totalTransactions;
+        this.walletPool.lastUpdate = Number(dbPool.lastUpdate);
+
+        console.log(`\n✅ WALLET HAVUZU YÜKLENDI`);
+        console.log(`   Toplam USD: ${dbPool.totalUSD.toFixed(2)}`);
+        console.log(`   Toplam TRY: ${dbPool.totalTRY.toFixed(2)}`);
+        console.log(`   İşlem Sayısı: ${dbPool.totalTransactions}`);
+        console.log(`   Kaynak: SQLite Database (Kalıcı)\n`);
+
+        addSystemLog(
+          `[💾 HAVUZ YÜKLENDİ] DB'den geri yüklendi: ${dbPool.totalUSD.toFixed(2)} USD`
+        );
+      } else {
+        console.log(`\n💾 Yeni Wallet Havuzu oluşturuluyor...\n`);
+      }
+    } catch (error: any) {
+      console.error(`[⚠️ HAVUZ LOAD HATASI] ${error.message}`);
+    }
+  }
+
+  /**
    * Admin Login - Session oluştur
    */
   static login(email: string, password: string): { success: boolean; sessionId?: string; error?: string } {
@@ -115,36 +150,79 @@ export class AdminPanel {
   }
 
   /**
-   * Satışı Havuza Ekle - Transfer YAPMA, sadece havuzda tut
+   * Satışı Havuza Ekle - DB'ye Kalıcı Olarak Kayıt Et
+   * v21.0: Render deploy/reset'te bile veri kaybolmaz
    */
-  static addToWalletPool(
+  static async addToWalletPool(
     amount: number,
     amountTRY: number,
     source: string,
     orderId: string
-  ): void {
-    const transaction = {
-      id: orderId,
-      amount,
-      source,
-      timestamp: Date.now(),
-      status: "pooled" as const
-    };
+  ): Promise<void> {
+    try {
+      // DB'ye işlemi kayıt et
+      await prisma.walletTransaction.create({
+        data: {
+          orderId,
+          amount,
+          amountTRY,
+          source,
+          status: "pooled",
+          timestamp: BigInt(Date.now())
+        }
+      });
 
-    this.walletPool.transactions.push(transaction);
-    this.walletPool.totalUSD += amount;
-    this.walletPool.totalTRY += amountTRY;
-    this.walletPool.totalTransactions += 1;
-    this.walletPool.lastUpdate = Date.now();
+      // DB'deki havuzu güncelle
+      await prisma.walletPool.upsert({
+        where: { id: "singleton" },
+        create: {
+          id: "singleton",
+          totalUSD: amount,
+          totalTRY: amountTRY,
+          totalTransactions: 1,
+          lastUpdate: BigInt(Date.now())
+        },
+        update: {
+          totalUSD: {
+            increment: amount
+          },
+          totalTRY: {
+            increment: amountTRY
+          },
+          totalTransactions: {
+            increment: 1
+          },
+          lastUpdate: BigInt(Date.now())
+        }
+      });
 
-    console.log(`\n💰 HAVUZA EKLENDİ`);
-    console.log(`   Tutar: ${amount.toFixed(2)} USD = ₺${amountTRY.toFixed(2)}`);
-    console.log(`   Kaynak: ${source}`);
-    console.log(`   Havuz Toplam: ${this.walletPool.totalUSD.toFixed(2)} USD\n`);
+      // Memory de de tut (hızlı erişim için)
+      const transaction = {
+        id: orderId,
+        amount,
+        source,
+        timestamp: Date.now(),
+        status: "pooled" as const
+      };
+      this.walletPool.transactions.push(transaction);
+      this.walletPool.totalUSD += amount;
+      this.walletPool.totalTRY += amountTRY;
+      this.walletPool.totalTransactions += 1;
+      this.walletPool.lastUpdate = Date.now();
 
-    addSystemLog(
-      `[💰 HAVUZA TOPLA] ${amount.toFixed(2)} USD | Havuz: ${this.walletPool.totalUSD.toFixed(2)} USD`
-    );
+      console.log(`\n💰 HAVUZA EKLENDİ (DB'DE KAYITLI)`);
+      console.log(`   Tutar: ${amount.toFixed(2)} USD = ₺${amountTRY.toFixed(2)}`);
+      console.log(`   Kaynak: ${source}`);
+      console.log(`   Havuz Toplam: ${this.walletPool.totalUSD.toFixed(2)} USD`);
+      console.log(`   Status: ✅ Kalıcı olarak DB'ye kaydedildi\n`);
+
+      addSystemLog(
+        `[💰 HAVUZA TOPLA] ${amount.toFixed(2)} USD | Havuz: ${this.walletPool.totalUSD.toFixed(2)} USD | DB: ✅ Kaydedildi`
+      );
+    } catch (error: any) {
+      console.error(`[❌ HAVUZ KAYIT HATASI] ${error.message}`);
+      addSystemLog(`[❌ HAVUZ KAYIT HATASI] ${error.message}`);
+    }
   }
 
   /**
