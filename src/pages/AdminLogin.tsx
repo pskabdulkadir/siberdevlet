@@ -4,8 +4,8 @@ import { LogIn } from 'lucide-react';
 
 export function AdminLogin() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('psikologabdulkadirkan@gmail.com');
-  const [password, setPassword] = useState('Abdulkadir1983');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -96,13 +96,6 @@ export function AdminLogin() {
           </button>
         </form>
 
-        {/* Info */}
-        <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-          <p className="text-sm text-blue-300">
-            📧 <strong>Email:</strong> psikologabdulkadirkan@gmail.com<br/>
-            🔑 <strong>Şifre:</strong> Abdulkadir1983
-          </p>
-        </div>
       </div>
     </div>
   );
