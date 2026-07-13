@@ -733,6 +733,9 @@ export class PlanetManager {
       }
     }
 
+    // v18.0: OTOMASYON SATIŞLARI - Dış alıcılar marketplace ürünlerini satın al
+    AutomatedSalesAndPayout.executeAutoSalesCycle(state.activeTicks);
+
     // v15.0: OTOMATIK PARA ÇEKME - Marketplace geliri cüzdana aktar
     const marketplaceStats = OpenMarketplace.getMarketplaceStats();
     if (marketplaceStats.totalRevenue > 0) {
