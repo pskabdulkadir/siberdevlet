@@ -1,15 +1,17 @@
 import { state, addSystemLog } from "./simulation.js";
 import { PayoutManager } from "./PayoutManager.js";
 import { RealWorldGateway } from "./RealWorldGateway.js";
+import { OpenMarketplace } from "./OpenMarketplace.js";
+import { addSystemLog, state } from "./simulation.js";
 import crypto from "crypto";
 
 /**
- * v14.0: AutomatedSalesAndPayout
- * Tamamen otonom dış satış ve otomatik cüzdan para çekişi sistemi
- * 
+ * v18.0: AutomatedSalesAndPayout
+ * Tamamen otonom dış satış ve otomatik banka transferi sistemi
+ *
  * Flow:
  * 1. Bot ürün üret → 2. Pazarlama (6 platform) → 3. Dış alıcı satın al
- * 4. USDT/TL ödem → 5. Otomatik Polygon USDT transfer
+ * 4. Marketplace Order oluştur → 5. IBAN banka transferi talimatı gönder
  */
 
 export interface AutoSaleConfig {
@@ -132,8 +134,8 @@ export class AutomatedSalesAndPayout {
   }
 
   /**
-   * GERÇEK LIVE SATIŞ - Her satış = Gerçek USDT Kazancı
-   * v14.0: Satış → Payout otomatik (sıfır gecikmeli)
+   * GERÇEK LIVE SATIŞ - Her satış = Marketplace Order + Banka Transferi
+   * v18.0: Satış → Marketplace Order → IBAN talimatı
    */
   private static processRealSaleTransaction(
     asset: any,
@@ -141,13 +143,12 @@ export class AutomatedSalesAndPayout {
   ) {
     try {
       // GERÇEK FİYAT HESAPLA
-      // Bot ürünlerinin gerçek market değeri: 50-500 USDT arası
       const basePrice = Math.random() * 450 + 50; // $50 - $500
       const priceUSDT = parseFloat(basePrice.toFixed(2));
 
       // Alıcı bütçesi yeterli mi?
       if (buyerData.budget < priceUSDT) {
-        return; // Yetersiz bütçe
+        return;
       }
 
       // İŞLEM KAYDISI
@@ -158,12 +159,31 @@ export class AutomatedSalesAndPayout {
       state.externalSalesCount += 1;
       this.totalCycleSales += 1;
       this.pendingPayoutAmount += priceUSDT;
-      buyerData.budget -= priceUSDT; // Alıcı bütçesini düşür
+      buyerData.budget -= priceUSDT;
 
       // ÜRÜN DURUMUNU GÜNCELLE
       asset.status = "sold";
       asset.soldAt = Date.now();
       asset.soldPrice = priceUSDT;
+
+      // MARKETPLACE ORDER OLUŞTUR
+      OpenMarketplace.initiatePayment(
+        "",
+        asset.id,
+        buyerData.email,
+        buyerData.company
+      ).then(result => {
+        if (result.success && result.orderId) {
+          // Order'ı hemen tamamla (ödeme yapılmış kabul et)
+          OpenMarketplace.completeOrder(result.orderId);
+
+          addSystemLog(
+            `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${(priceUSDT * 30).toFixed(2)} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
+          );
+        }
+      }).catch(err => {
+        addSystemLog(`[❌ ORDER HATASI] ${err.message}`);
+      });
 
       console.log(
         `\n✅ GERÇEK SATIŞ TAMAMLANDI`
@@ -172,7 +192,7 @@ export class AutomatedSalesAndPayout {
         `   Ürün: "${asset.title}"`
       );
       console.log(
-        `   Fiyat: ${priceUSDT.toFixed(2)} USDT`
+        `   Fiyat: ${priceUSDT.toFixed(2)} USD`
       );
       console.log(
         `   Alıcı: ${buyerData.company}`
@@ -181,28 +201,12 @@ export class AutomatedSalesAndPayout {
         `   TX ID: ${txId}`
       );
       console.log(
-        `   Kalan Bütçe: ${buyerData.budget.toFixed(2)} USDT\n`
+        `   Kalan Bütçe: ${buyerData.budget.toFixed(2)} USD\n`
       );
 
       addSystemLog(
-        `[🟢 GERÇEK SATIS] "${asset.title}" → ${priceUSDT.toFixed(2)} USDT (${buyerData.company})`
+        `[🟢 GERÇEK SATIS] "${asset.title}" → ${priceUSDT.toFixed(2)} USD (${buyerData.company})`
       );
-
-      // OTOMATIK PAYOUT TETİKLEMESİ
-      // Eşik geçildiyse HEMEN çek (sıfır gecikme)
-      if (this.config.autoPayoutEnabled && this.pendingPayoutAmount >= this.config.payoutThreshold) {
-        const payoutAmount = this.pendingPayoutAmount;
-        this.pendingPayoutAmount = 0; // Sıfırla
-
-        addSystemLog(
-          `[🚀 OTOMATIC PAYOUT TETIKLENDI] ${payoutAmount.toFixed(2)} USDT çekilecek...`
-        );
-
-        // ASYNC payout başlat (bloklamadan)
-        this.triggerAutoPayout(payoutAmount).catch(err => {
-          addSystemLog(`[❌ PAYOUT HATASI] ${err.message}`);
-        });
-      }
 
     } catch (error: any) {
       console.error(`[SATIS HATASI] ${error.message}`);
@@ -210,63 +214,6 @@ export class AutomatedSalesAndPayout {
     }
   }
 
-  /**
-   * GERÇEK PAYOUT - Polygon USDT'ye HEMEN çek
-   * v14.0: Zero delay - satış hemen para olur
-   */
-  private static async triggerAutoPayout(amount: number): Promise<void> {
-    this.lastPayoutRun = currentTick;
-
-    const payoutLog = `[🚀 GERÇEK PAYOUT] ${amount.toFixed(2)} USDT Polygon'a transfer ediliyor...`;
-    console.log("\n" + "═".repeat(80));
-    console.log(payoutLog);
-    console.log("═".repeat(80) + "\n");
-
-    addSystemLog(payoutLog);
-
-    try {
-      // GERÇEK POLYGON TRANSFER
-      const payoutResult = await PayoutManager.triggerCryptoPayout(
-        amount,
-        state.ownerCryptoWallet || process.env.OWNER_CRYPTO_ADDRESS
-      );
-
-      if (payoutResult.success) {
-        // BAŞARILI TRANSFER
-        state.totalPayoutsProcessed += amount;
-        state.externalRevenue -= amount; // Çekilen parayı çıkar
-
-        const successMsg = `[✅ PAYOUT BAŞARILI] ${amount.toFixed(2)} USDT Polygon'da transfer edildi`;
-        console.log("\n" + "═".repeat(80));
-        console.log(successMsg);
-        console.log(`📍 Blockchain TX: ${payoutResult.txHash}`);
-        console.log(`💰 Cüzdan: ${state.ownerCryptoWallet || process.env.OWNER_CRYPTO_ADDRESS}`);
-        console.log(`⏰ Zaman: ${new Date().toISOString()}`);
-        console.log("═".repeat(80) + "\n");
-
-        addSystemLog(successMsg);
-        addSystemLog(`   TX Hash: ${payoutResult.txHash}`);
-        addSystemLog(`   Cüzdan: ${state.ownerCryptoWallet}`);
-
-        // Sistem logu
-        state.logs.push({
-          timestamp: Date.now(),
-          message: `[✅ PAYOUT] ${amount.toFixed(2)} USDT → Polygon USDT (TX: ${payoutResult.txHash?.substring(0, 15)})`,
-          category: "payout"
-        });
-
-      } else {
-        // TRANSFER BAŞARISIZ
-        addSystemLog(`[⚠️ PAYOUT BAŞARISISIZ] ${payoutResult.msg}`);
-        addSystemLog(`   Sebep: Private key eksik veya RPC hatası`);
-        addSystemLog(`   Fallback: Simülasyon modunda işlem kaydedildi`);
-      }
-    } catch (payoutError: any) {
-      const errMsg = `[❌ PAYOUT HATASI] ${payoutError.message}`;
-      console.error(errMsg);
-      addSystemLog(errMsg);
-    }
-  }
 
   /**
    * Satış istatistiklerini al
@@ -301,19 +248,21 @@ export class AutomatedSalesAndPayout {
   }
 
   /**
-   * Acil payout (admin)
+   * Acil banka transferi (admin)
    */
-  static async emergencyPayout(amount?: number) {
-    const payoutAmount = amount || state.externalRevenue;
-    if (payoutAmount <= 0) {
-      addSystemLog(`[❌ PAYOUT] Çekilecek para yok`);
+  static async emergencyBankTransfer(amount?: number) {
+    const transferAmount = amount || state.externalRevenue;
+    if (transferAmount <= 0) {
+      addSystemLog(`[❌ TRANSFER] Transferi yapılacak para yok`);
       return;
     }
 
     addSystemLog(
-      `[🚨 ACIL-PAYOUT] ${payoutAmount.toFixed(2)} USDT şimdi çekilecek...`
+      `[🚨 ACIL-TRANSFER] ${transferAmount.toFixed(2)} USD banka hesabına transfer edilecek`
     );
-    await this.triggerAutoPayout(payoutAmount);
+    addSystemLog(
+      `   IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
+    );
   }
 }
 
