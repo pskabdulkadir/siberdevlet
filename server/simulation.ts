@@ -525,7 +525,14 @@ export function seedInitialSimulation() {
     console.warn("Test alıcı kaydı başarısız:", err);
   }
 
-  addSystemLog(`12 temel Bot sınıfı ve 6 Bakanlık başarıyla kuruldu. v7.1: Siber Savunma ve Borsa sistemi entegre edildi. v13.5: RealWorldGateway marketplace entegrasyonu aktif.`);
+  // v18.0: Dış alıcıları başlat - Bot satışlarını etkinleştir
+  try {
+    AutomatedSalesAndPayout.initializeExternalBuyers();
+  } catch (err) {
+    console.warn("Dış alıcı başlatma hatası:", err);
+  }
+
+  addSystemLog(`12 temel Bot sınıfı ve 6 Bakanlık başarıyla kuruldu. v7.1: Siber Savunma ve Borsa sistemi entegre edildi. v13.5: RealWorldGateway marketplace entegrasyonu aktif. v18.0: Dış alıcılar başlatıldı.`);
 }
 
 // PlanetManager - Siber-Dünya Anayasası ve Kurallarını denetleyen global yönetim sınıfı
