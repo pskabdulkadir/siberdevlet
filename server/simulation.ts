@@ -15,6 +15,8 @@ import { MarketingManager } from "./MarketingManager.js";
 import { AutomatedMarketing } from "./AutomatedMarketing.js";
 import { RealWorldGateway } from "./RealWorldGateway.js";
 import { AutomatedSalesAndPayout, setCurrentTick } from "./AutomatedSalesAndPayout.js";
+import { OpenMarketplace } from "./OpenMarketplace.js";
+import { AutoPayoutManager } from "./AutoPayoutManager.js";
 import {
   Bot,
   BotMinistry,
@@ -701,9 +703,35 @@ export class PlanetManager {
     // v13.7: OTOMATIK SOSYAL MEDYA PAYLAŞIMI (Twitter, Reddit, GitHub, Medium, Discord, Telegram)
     await AutomatedMarketing.executeAutomatedMarketing(state.activeTicks);
 
-    // v14.0: OTOMATIK DIS SATIS VE PAYOUT (Bot Ürünleri → Dış Alıcılar → Polygon USDT)
-    setCurrentTick(state.activeTicks);
-    AutomatedSalesAndPayout.executeAutoSalesCycle(state.activeTicks);
+    // v15.0: AÇIK MARKETPLACE ENTEGRASYON - Bot ürünlerini otomatik marketplace'e ekle
+    for (const asset of state.assets) {
+      // Her varlık bir kez marketplace'e eklenmeli
+      const alreadyListed = OpenMarketplace.products.some(p => p.id === asset.id);
+      if (!alreadyListed && asset.title && asset.content) {
+        // Dinamik fiyat: kategori ve içerik uzunluğuna göre
+        const basePrice = Math.random() * 200 + 30; // $30 - $230 USD
+        const priceUSD = parseFloat(basePrice.toFixed(2));
+
+        OpenMarketplace.addProductToMarketplace(
+          asset.creatorName || "Bot",
+          asset.title,
+          asset.description || "Bot tarafından otomatik üretilmiş dijital ürün",
+          (asset.type.includes("Kod") ? "CodeModule" :
+           asset.type.includes("Makale") ? "Report" :
+           asset.type.includes("Görsel") ? "VisualArt" :
+           asset.type.includes("Model") ? "AIModel" : "Dataset") as any,
+          priceUSD,
+          asset.content.substring(0, 500)
+        );
+      }
+    }
+
+    // v15.0: OTOMATIK PARA ÇEKME - Marketplace geliri cüzdana aktar
+    const marketplaceStats = OpenMarketplace.getMarketplaceStats();
+    if (marketplaceStats.totalRevenue > 0) {
+      const revenueAmount = parseFloat(marketplaceStats.totalRevenue);
+      AutoPayoutManager.checkAndProcessPayouts(state.activeTicks, revenueAmount);
+    }
 
     // v12.0: Pazarlama istatistiklerini state'e senkronize et
     state.marketingCampaigns = MarketingManager.campaigns.length;

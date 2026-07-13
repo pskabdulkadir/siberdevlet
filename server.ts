@@ -220,6 +220,8 @@ import { AutomationManager } from "./server/AutomationManager.js";
 import { PolygonValidator } from "./server/PolygonValidator.js";
 import { ExternalApiMarket } from "./server/ExternalApiMarket.js";
 import { AutomatedSalesAndPayout } from "./server/AutomatedSalesAndPayout.js";
+import { OpenMarketplace } from "./server/OpenMarketplace.js";
+import { AutoPayoutManager } from "./server/AutoPayoutManager.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2057,10 +2059,168 @@ app.post("/api/automated-sales/emergency-payout", express.json(), async (req, re
   }
 });
 
+// v15.0: AÇIK MARKETPLACE API - Herkese açık ürün satışı
+// Marketplace ürünlerini listele (PUBLIC)
+app.get("/api/marketplace/products", (req, res) => {
+  const category = req.query.category as string | undefined;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+
+  const result = OpenMarketplace.getPublicProducts(category, page, limit);
+  res.json(result);
+});
+
+// Marketplace istatistikleri
+app.get("/api/marketplace/stats", (req, res) => {
+  const stats = OpenMarketplace.getMarketplaceStats();
+  res.json({
+    success: true,
+    timestamp: Date.now(),
+    marketplace: stats
+  });
+});
+
+// Ürün detayları ve satın alma sayfası
+app.get("/api/marketplace/product/:productId", (req, res) => {
+  const product = OpenMarketplace.products.find(p => p.id === req.params.productId);
+
+  if (!product) {
+    return res.status(404).json({ success: false, error: "Ürün bulunamadı" });
+  }
+
+  res.json({
+    success: true,
+    product: {
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      category: product.category,
+      price: product.price,
+      priceInTRY: product.priceInTRY,
+      creatorBot: product.creatorBot,
+      fileSize: product.fileSize,
+      purchaseCount: product.purchaseCount,
+      reviews: product.reviews,
+      rating: product.reviews.length > 0
+        ? (product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length).toFixed(1)
+        : 0,
+      createdAt: new Date(product.createdAt).toISOString()
+    }
+  });
+});
+
+// Ödeme başlat - Stripe/PayPal/Bank/Crypto
+app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
+  const { productId, email, name, paymentMethod } = req.body;
+
+  if (!productId || !email || !name || !paymentMethod) {
+    return res.status(400).json({
+      success: false,
+      error: "Gerekli: productId, email, name, paymentMethod"
+    });
+  }
+
+  const product = OpenMarketplace.products.find(p => p.id === productId);
+  if (!product) {
+    return res.status(404).json({ success: false, error: "Ürün bulunamadı" });
+  }
+
+  try {
+    const result = await OpenMarketplace.initiatePayment(
+      "", // customerId otomatik oluşturulur
+      productId,
+      paymentMethod as any,
+      email,
+      name
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Ödeme doğrulama (Webhook - Stripe, PayPal)
+app.post("/api/marketplace/confirm-payment", express.json(), (req, res) => {
+  const { orderId, transactionId } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ success: false, error: "OrderId gerekli" });
+  }
+
+  const success = OpenMarketplace.completeOrder(orderId, transactionId);
+
+  if (!success) {
+    return res.status(404).json({ success: false, error: "Order bulunamadı" });
+  }
+
+  addSystemLog(`[✅ ÖDEME ONAYLANDI] Order: ${orderId}`);
+
+  res.json({
+    success: true,
+    message: "Ödeme doğrulandı. Ürün indirebilirsiniz.",
+    orderId
+  });
+});
+
+// PAYOUT YÖNETIMI
+// Payout istatistikleri
+app.get("/api/payout/stats", (req, res) => {
+  const stats = AutoPayoutManager.getPayoutStats();
+  res.json({
+    success: true,
+    timestamp: Date.now(),
+    payout: stats
+  });
+});
+
+// Payout yapılandırmasını güncelle
+app.post("/api/payout/config", express.json(), (req, res) => {
+  try {
+    const { threshold, method, autoTransfer } = req.body;
+
+    const config: any = {};
+    if (threshold) config.payoutThreshold = threshold;
+    if (method) config.preferredMethod = method;
+    if (typeof autoTransfer === "boolean") config.autoTransfer = autoTransfer;
+
+    AutoPayoutManager.updateConfig(config);
+
+    res.json({
+      success: true,
+      message: "Payout yapılandırması güncellendi",
+      stats: AutoPayoutManager.getPayoutStats()
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Acil payout
+app.post("/api/payout/emergency", express.json(), (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, error: "Geçersiz tutar" });
+    }
+
+    AutoPayoutManager.emergencyPayout(amount);
+
+    res.json({
+      success: true,
+      message: `$${amount.toFixed(2)} acil olarak çekilecek`,
+      stats: AutoPayoutManager.getPayoutStats()
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Eski endpoint compat (silinecek)
 app.post("/api/export/subscribe", (req, res) => {
   res.status(410).json({
-    error: "Bu endpoint kaldırıldı. /api/purchase-asset kullanın (Polygon USDT ile ödeme)."
+    error: "Bu endpoint kaldırıldı. /api/marketplace/products kullanın (Açık Marketplace)."
   });
 });
 
