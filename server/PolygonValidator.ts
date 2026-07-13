@@ -3,7 +3,8 @@ import { addSystemLog } from "./simulation.js";
 
 /**
  * v13.4: PolygonValidator - Blockchain TX Doğrulama
- * v24.0: DEVRE DIŞI - Polygon entegrasyonu kaldırıldığı için bu modül artık kullanılmamaktadır.
+ * Müşteri tarafından gönderilen transactionHash gerçekten geçerli mi kontrol et
+ * Sahte TX'leri engelle!
  */
 
 export class PolygonValidator {
@@ -41,12 +42,93 @@ export class PolygonValidator {
     senderWallet: string
   ): Promise<{ valid: boolean; error?: string; tx?: any }> {
     try {
-      // v24.0: Polygon entegrasyonu kaldırıldı.
-      const errorMessage = "Polygon entegrasyonu kaldırılmıştır. Kripto ödemeleri şu anda desteklenmemektedir.";
-      addSystemLog(`[UYARI] Engellenen Polygon doğrulama denemesi: ${transactionHash}. Sebep: ${errorMessage}`);
+      this.initProvider();
+
+      // TX hash format kontrolü
+      if (!transactionHash.startsWith("0x") || transactionHash.length !== 66) {
+        return { 
+          valid: false, 
+          error: "Invalid transaction hash format" 
+        };
+      }
+
+      // Blockchain'den TX al
+      const tx = await this.provider!.getTransaction(transactionHash);
+      
+      if (!tx) {
+        addSystemLog(
+          `[❌ TX DOĞRULAMA BAŞARIŞIZ] TX bulunamadı: ${transactionHash}`
+        );
+        return { 
+          valid: false, 
+          error: "Transaction not found on Polygon network" 
+        };
+      }
+
+      // TX'in onaylanmış olduğunu kontrol et
+      const receipt = await this.provider!.getTransactionReceipt(transactionHash);
+      
+      if (!receipt) {
+        addSystemLog(
+          `[⏳ TX BEKLEMESİ] TX henüz onaylanmamış: ${transactionHash}`
+        );
+        return { 
+          valid: false, 
+          error: "Transaction not yet confirmed. Please wait." 
+        };
+      }
+
+      // TX başarılı mı?
+      if (receipt.status !== 1) {
+        addSystemLog(
+          `[❌ TX BAŞARISISIZ] İşlem failed/reverted: ${transactionHash}`
+        );
+        return { 
+          valid: false, 
+          error: "Transaction failed on blockchain" 
+        };
+      }
+
+      // USDT token transfer'ı kontrol et
+      const usdtAmount = this.parseUSDTAmount(receipt, expectedUSDTAmount);
+      
+      if (usdtAmount === null) {
+        addSystemLog(
+          `[❌ USDT TUTARI UYUŞMUYOR] Beklenen: ${expectedUSDTAmount}, Gerçek: Tespit edilemedi`
+        );
+        return { 
+          valid: false, 
+          error: `Expected ${expectedUSDTAmount} USDT but amount doesn't match` 
+        };
+      }
+
+      // Alıcı bizim cüzdan mı?
+      if (receipt.to?.toLowerCase() !== this.RECEIVER_ADDRESS.toLowerCase()) {
+        addSystemLog(
+          `[❌ ALICI CÜZDAN HATA] Beklenen: ${this.RECEIVER_ADDRESS}, Gerçek: ${receipt.to}`
+        );
+        return { 
+          valid: false, 
+          error: "USDT not sent to correct receiver wallet" 
+        };
+      }
+
+      // ✅ GEÇERLI İŞLEM!
+      addSystemLog(
+        `[✅ TX DOĞRULANDI] ${senderWallet} tarafından ${expectedUSDTAmount} USDT gönderildi | ` +
+        `Hash: ${transactionHash}`
+      );
+
       return { 
-        valid: false, 
-        error: errorMessage
+        valid: true, 
+        tx: {
+          hash: transactionHash,
+          from: tx.from,
+          to: receipt.to,
+          amount: expectedUSDTAmount,
+          status: "confirmed",
+          blockNumber: receipt.blockNumber
+        }
       };
 
     } catch (error: any) {

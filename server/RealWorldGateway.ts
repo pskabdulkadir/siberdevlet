@@ -63,7 +63,7 @@ export interface Transaction {
   buyerId: string;
   productId: string;
   amount: number; // USDT
-  paymentMethod: "BANK_TRANSFER"; // v24.0: Kripto ödemeleri kaldırıldı
+  paymentMethod: "BANK_TRANSFER" | "USDT_POLYGON"; // v28.0: Otomatik doğrulama için kripto yeniden eklendi
   status: "pending" | "verified" | "completed" | "failed";
   transactionHash?: string; // TRC-20 tx hash
   bankReceipt?: string; // Banka dekontu
@@ -152,7 +152,7 @@ export class RealWorldGateway {
   static initiatePayment(
     buyerId: string,
     productId: string,
-    paymentMethod: "BANK_TRANSFER"
+    paymentMethod: "BANK_TRANSFER" | "USDT_POLYGON"
   ): Transaction {
     const buyer = this.buyers.get(buyerId);
     const product = this.marketplace.find(p => p.id === productId);
@@ -185,7 +185,12 @@ export class RealWorldGateway {
     console.log(`📦 Ürün: "${product.title}"`);
     console.log(`💵 Tutar: ${product.price} USDT\n`);
 
-    if (paymentMethod === "BANK_TRANSFER") {
+    if (paymentMethod === "USDT_POLYGON") {
+      console.log(`🔗 Ağ: Polygon (MATIC Network)`);
+      console.log(`📥 Alıcı Cüzdan (KOPYA YAP):`);
+      console.log(`   ${process.env.OWNER_CRYPTO_ADDRESS || "Lütfen .env dosyasında OWNER_CRYPTO_ADDRESS ayarlayın"}\n`);
+      console.log(`⚠️  Ödemeyi gönderdikten sonra PolygonScan İşlem Hash'i (Tx Hash) ile doğrulayın:\n`);
+    } else { // BANK_TRANSFER
       console.log(`🏦 Banka: QNB Finansbank`);
       console.log(`👤 Alıcı: Abdulkadir Kan`);
       console.log(`🔢 IBAN (KOPYA YAP):`);
@@ -219,9 +224,17 @@ export class RealWorldGateway {
       throw new Error("İşlem bulunamadı");
     }
 
-    // v24.0: Kripto ödemeleri kaldırıldığı için bu blok her zaman banka transferi varsayar.
-    throw new Error("Banka dekontları otomatik doğrulanamaz; admin onayı gerekir");
+    // v28.0: Otomatik doğrulama mantığı
+    if (tx.paymentMethod === "BANK_TRANSFER") {
+      throw new Error("Banka dekontları otomatik doğrulanamaz; admin onayı gerekir");
+    }
 
+    // Otomatik Polygon USDT Doğrulaması
+    const validation = await PolygonValidator.validateTransaction(proof, tx.amount, "unknown");
+    if (!validation.valid) {
+      throw new Error(validation.error || "Blockchain ödemesi doğrulanamadı");
+    }
+    
     // Ödemeyi onayla
     tx.status = "verified";
     tx.transactionHash = proof;
