@@ -44,7 +44,7 @@ interface ManualTransfer {
 }
 
 export class AdminPanel {
-  // Admin Credentials (Hardcoded - Render'da env var olarak ayarlanabilir)
+  // Admin Credentials - Render'da env var olarak ayarlanır
   private static readonly ADMIN_EMAIL = process.env.ADMIN_EMAIL || "psikologabdulkadirkan@gmail.com";
   private static readonly ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Abdulkadir1983";
 

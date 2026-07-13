@@ -16,22 +16,29 @@ const router = express.Router();
  * Admin girişi
  */
 router.post("/api/admin/login", express.json(), (req, res) => {
+  console.log(`\n${"═".repeat(70)}`);
+  console.log(`[📧 ADMIN LOGIN ENDPOINT ÇAĞRILDI]`);
+  console.log(`${"═".repeat(70)}`);
+  console.log(`   Body: ${JSON.stringify(req.body)}`);
+
   const { email, password } = req.body;
 
-  console.log(`[📧 LOGIN ATTEMPT]`);
   console.log(`   Email: ${email}`);
-  console.log(`   Password length: ${password?.length || 0}`);
+  console.log(`   Password: ${password}`);
 
   if (!email || !password) {
+    console.log(`   ❌ Email veya şifre eksik`);
     return res.status(400).json({
       success: false,
       error: "Email ve şifre gerekli"
     });
   }
 
+  console.log(`   ➡️ AdminPanel.login() çağırılıyor...`);
   const result = AdminPanel.login(email, password);
 
-  console.log(`[📧 LOGIN RESULT] Success: ${result.success}`);
+  console.log(`   📊 Sonuç: ${JSON.stringify(result)}`);
+  console.log(`${"═".repeat(70)}\n`);
 
   if (!result.success) {
     return res.status(401).json(result);
