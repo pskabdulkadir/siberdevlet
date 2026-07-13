@@ -21,7 +21,16 @@ export interface PayoutConfig {
 }
 
 export class AutoPayoutManager {
-  private static readonly stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+  // Stripe lazy initialize - key yoksa null
+  private static _stripe: Stripe | null = null;
+
+  private static get stripe(): Stripe {
+    if (!this._stripe && process.env.STRIPE_SECRET_KEY) {
+      this._stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    }
+    return this._stripe as any;
+  }
+
   private static lastPayoutCheck = 0;
 
   // Yapılandırma - LIVE SETTINGS

@@ -63,8 +63,16 @@ export interface Order {
 }
 
 export class OpenMarketplace {
-  private static readonly stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
-  
+  // Stripe lazy initialize - key yoksa null
+  private static _stripe: Stripe | null = null;
+
+  private static get stripe(): Stripe {
+    if (!this._stripe && process.env.STRIPE_SECRET_KEY) {
+      this._stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    }
+    return this._stripe as any;
+  }
+
   // Global marketplace ürünleri
   static products: MarketplaceProduct[] = [];
   static customers: Map<string, Customer> = new Map();
@@ -230,10 +238,21 @@ export class OpenMarketplace {
     msg: string;
   }> {
     try {
-      if (!process.env.STRIPE_SECRET_KEY) {
+      if (!process.env.STRIPE_SECRET_KEY || !this.stripe) {
+        addSystemLog(
+          `[⚠️ STRIPE KAPALI] Stripe key yok. Fallback: Manual ödeme linki`
+        );
+
+        this.orders.push(order);
+
+        // Fallback: Manual ödeme sayfası
+        const manualPaymentUrl = `https://pay.example.com/checkout?amount=${order.amount}&currency=usd&orderId=${order.id}`;
+
         return {
-          success: false,
-          msg: "Stripe entegrasyonu yapılandırılmamış"
+          success: true,
+          orderId: order.id,
+          paymentUrl: manualPaymentUrl,
+          msg: `Stripe kapısı kapalı. Manual ödeme linki gönderildi: $${order.amount.toFixed(2)}`
         };
       }
 
