@@ -361,30 +361,14 @@ export class RealWorldGateway {
         `\n[🤖 OTOBOT SATIŞ] "${product.title}" | ${buyAmount} USDT | Buyer: ${autoEmail}`
       );
 
-      // GERÇEK BANKA TRANSFERI BAŞLAT (v19.0)
-      const amountTRY = buyAmount * 30;
-      const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
+      // BANKA TRANSFERI DEVRE DIŞI - Para havuzda tutulacak
+      // const amountTRY = buyAmount * 30;
+      // const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
+      // BankTransferNode ve PayoutManager çağrıları devre dışı
 
-      BankTransferNode.processRealTransfer(
-        txId,
-        buyAmount,
-        amountTRY,
-        bankIban,
-        autoEmail,
-        product.title
-      ).then(result => {
-        if (result.success) {
-          addSystemLog(
-            `[🏦 TRANSFER BAŞLADI] ${product.title} - TRN: ${result.transferId} | $${buyAmount.toFixed(2)}`
-          );
-        }
-      }).catch(err => {
-        console.error(`[❌ TRANSFER HATASI] ${err.message}`);
-      });
-
-      // Payout tetikle
-      const { PayoutManager } = require("./PayoutManager.js");
-      PayoutManager.triggerCryptoPayout(buyAmount);
+      addSystemLog(
+        `[✅ HAVUZ] ${product.title} - $${buyAmount.toFixed(2)} havuza eklendi (Transfer devre dışı)`
+      );
     }
 
     this.lastAutoBuyerTime = now;

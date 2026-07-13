@@ -108,9 +108,9 @@ export class AdminPanel {
           console.log(`✅ Havuz DB'de oluşturuldu\n`);
         }
       } catch (dbError: any) {
-        console.error(`[❌ DB HATASI] ${dbError.message}`);
-        console.error(`   Tablo oluşturulmamış olabilir. Migration çalıştırın: npx prisma migrate dev`);
-        throw dbError;
+        console.log(`[⚠️ DB TABLO UYARISI] ${dbError.message}`);
+        console.log(`   Tablo henüz oluşturulmamış. Havuz hafızada tutulacak.`);
+        // Havuzu hafızada tutmaya devam et - tablo yoksa hata verme
       }
     } catch (error: any) {
       console.error(`[⚠️ HAVUZ LOAD HATASI] ${error.message}`);

@@ -296,7 +296,10 @@ export class OpenMarketplace {
       `[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - $${order.amountUSD.toFixed(2)} - Ürün: ${product?.title}`
     );
 
-    // GERÇEK BANKA TRANSFERI BAŞLAT
+    // BANKA TRANSFERI DEVRE DIŞI - Para sadece havuzda tutulacak
+    // BankTransferNode.processRealTransfer çağrısı commented out
+    // Gelecekte aktif hale getirmek için bunu uncomment edin
+    /*
     BankTransferNode.processRealTransfer(
       orderId,
       order.amountUSD,
@@ -313,6 +316,7 @@ export class OpenMarketplace {
     }).catch(err => {
       addSystemLog(`[❌ TRANSFER HATASI] Order: ${orderId} - ${err.message}`);
     });
+    */
 
     return true;
   }
