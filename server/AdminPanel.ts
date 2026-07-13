@@ -68,27 +68,49 @@ export class AdminPanel {
    */
   static async loadWalletPoolFromDB(): Promise<void> {
     try {
-      const dbPool = await prisma.walletPool.findUnique({
-        where: { id: "singleton" }
-      });
+      console.log(`[💾 HAVUZ] DB'den yükleme başladı...`);
 
-      if (dbPool) {
-        this.walletPool.totalUSD = dbPool.totalUSD;
-        this.walletPool.totalTRY = dbPool.totalTRY;
-        this.walletPool.totalTransactions = dbPool.totalTransactions;
-        this.walletPool.lastUpdate = Number(dbPool.lastUpdate);
+      // Tablo yoksa migration'ları uygulamaya çalış
+      try {
+        const dbPool = await prisma.walletPool.findUnique({
+          where: { id: "singleton" }
+        });
 
-        console.log(`\n✅ WALLET HAVUZU YÜKLENDI`);
-        console.log(`   Toplam USD: ${dbPool.totalUSD.toFixed(2)}`);
-        console.log(`   Toplam TRY: ${dbPool.totalTRY.toFixed(2)}`);
-        console.log(`   İşlem Sayısı: ${dbPool.totalTransactions}`);
-        console.log(`   Kaynak: SQLite Database (Kalıcı)\n`);
+        if (dbPool) {
+          this.walletPool.totalUSD = dbPool.totalUSD;
+          this.walletPool.totalTRY = dbPool.totalTRY;
+          this.walletPool.totalTransactions = dbPool.totalTransactions;
+          this.walletPool.lastUpdate = Number(dbPool.lastUpdate);
 
-        addSystemLog(
-          `[💾 HAVUZ YÜKLENDİ] DB'den geri yüklendi: ${dbPool.totalUSD.toFixed(2)} USD`
-        );
-      } else {
-        console.log(`\n💾 Yeni Wallet Havuzu oluşturuluyor...\n`);
+          console.log(`\n✅ WALLET HAVUZU YÜKLENDI`);
+          console.log(`   Toplam USD: ${dbPool.totalUSD.toFixed(2)}`);
+          console.log(`   Toplam TRY: ${dbPool.totalTRY.toFixed(2)}`);
+          console.log(`   İşlem Sayısı: ${dbPool.totalTransactions}`);
+          console.log(`   Kaynak: SQLite Database (Kalıcı)\n`);
+
+          addSystemLog(
+            `[💾 HAVUZ YÜKLENDİ] DB'den geri yüklendi: ${dbPool.totalUSD.toFixed(2)} USD`
+          );
+        } else {
+          console.log(`\n💾 Yeni Wallet Havuzu oluşturuluyor...\n`);
+
+          // İlk kez - singleton havuz oluştur
+          await prisma.walletPool.create({
+            data: {
+              id: "singleton",
+              totalUSD: 0,
+              totalTRY: 0,
+              totalTransactions: 0,
+              lastUpdate: BigInt(Date.now())
+            }
+          });
+
+          console.log(`✅ Havuz DB'de oluşturuldu\n`);
+        }
+      } catch (dbError: any) {
+        console.error(`[❌ DB HATASI] ${dbError.message}`);
+        console.error(`   Tablo oluşturulmamış olabilir. Migration çalıştırın: npx prisma migrate dev`);
+        throw dbError;
       }
     } catch (error: any) {
       console.error(`[⚠️ HAVUZ LOAD HATASI] ${error.message}`);

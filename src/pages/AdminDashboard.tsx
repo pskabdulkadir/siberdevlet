@@ -42,13 +42,19 @@ export function AdminDashboard() {
 
   const loadDashboard = async () => {
     try {
+      console.log('[📊 Dashboard] Havuz verisi yükleniyor...');
       const response = await fetch(`/api/admin/wallet-pool?sessionId=${sessionId}`);
       const data = await response.json();
 
+      console.log('[📊 Dashboard] Havuz Response:', data);
+
       if (data.success) {
+        console.log('[📊 Dashboard] Pool ayarlandı:', data.pool);
         setPool(data.pool);
       } else if (response.status === 401) {
         navigate('/admin/login');
+      } else {
+        console.error('[❌ Dashboard] Havuz hatası:', data);
       }
 
       const historyResponse = await fetch(`/api/admin/transfers/history?sessionId=${sessionId}&limit=5`);
@@ -56,8 +62,8 @@ export function AdminDashboard() {
       if (historyData.success) {
         setTransfers(historyData.transfers);
       }
-    } catch (err) {
-      console.error('Dashboard yükleme hatası:', err);
+    } catch (err: any) {
+      console.error('[❌ Dashboard] Yükleme hatası:', err);
     } finally {
       setLoading(false);
     }
@@ -138,8 +144,15 @@ export function AdminDashboard() {
       <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Wallet Pool Stats */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Loading */}
+          {loading && (
+            <div className="bg-blue-900/20 border border-blue-700 text-blue-300 p-4 rounded-lg">
+              ⏳ Havuz verisi yükleniyor...
+            </div>
+          )}
+
           {/* Stats Cards */}
-          {pool && (
+          {pool && pool.totalUSD !== undefined ? (
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
                 <div className="flex items-center gap-2 mb-2">
@@ -164,7 +177,11 @@ export function AdminDashboard() {
                 <p className="text-2xl font-bold text-white">1 USD = ₺30</p>
               </div>
             </div>
-          )}
+          ) : !loading ? (
+            <div className="bg-yellow-900/20 border border-yellow-700 text-yellow-300 p-4 rounded-lg">
+              ⚠️ Havuzda henüz para yok. Satışlar gerçekleştikçe burada gösterilecek.
+            </div>
+          ) : null}
 
           {/* Transfer Geçmişi */}
           <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
