@@ -399,9 +399,3 @@ export class RealWorldGateway {
     this.lastAutoBuyerTime = now;
   }
 }
-      });
-    }
-
-    this.lastAutoBuyerTime = now;
-  }
-}
