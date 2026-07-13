@@ -166,7 +166,10 @@ export class BankTransferNode {
       );
 
     } catch (error: any) {
-      console.error(`[❌ USDT TRANSFER HATASI] ${error.message}`);
+      console.error(`\n[❌ USDT TRC-20 TRANSFER HATASI] ${error.message}`);
+      console.error(`   Kontrol: OWNER_CRYPTO_PRIVATE_KEY ve TRON RPC'nin doğru olup olmadığını kontrol et`);
+      console.error(`   Sistem devam ediyor, transfer başarısız\n`);
+      addSystemLog(`[❌ USDT TRANSFER HATASI] ${error.message}`);
     }
   }
 
@@ -240,21 +243,22 @@ export class BankTransferNode {
       this.walletBalance.totalTRY += amountTRY;
 
     } catch (error: any) {
-      // Hata = Sistem durdur
+      // API hatası → LOG YAP ama SISTEM DEVAM ETSİN
       console.error(`\n${"═".repeat(80)}`);
-      console.error(`❌ QNB FINANSBANK EFT HATASI`);
+      console.error(`❌ QNB FINANSBANK EFT HATASI (Transfer işlemi başarısız)`);
       console.error(`${"═".repeat(80)}`);
       console.error(`Transfer ID: ${transferId}`);
       console.error(`Hata: ${error.message}`);
       console.error(`Tutar: ₺${amountTRY.toFixed(2)}`);
       console.error(`Hedef IBAN: ${targetIban}`);
-      console.error(`\n🚨 SISTEM DURACAK - İşlem Başarısız`);
+      console.error(`\nDurum: Sistem devam ediyor, EFT işlemi BAŞARÍSIZ`);
+      console.error(`Çözüm: QNB_API_KEY ve QNB_CLIENT_ID doğru mu kontrol et`);
       console.error(`${"═".repeat(80)}\n`);
 
       addSystemLog(`[❌ QNB EFT HATASI] TRN: ${transferId} - ${error.message}`);
 
-      // Sistem durur - fallback yok
-      throw error;
+      // Sistem devam etsin - transfer kayıt edildi ama başarısız
+      // (credentials hazırlanırsa otomatik retry yapılabilir)
     }
   }
 
@@ -323,8 +327,9 @@ export class BankTransferNode {
   }
 
   /**
-   * SİSTEM BAŞLAMADA - GERÇEK CREDENTIALS KONTROLÜ (v20.0)
-   * Demo/Simülasyon YOK - Sadece Gerçek İşlemler
+   * SİSTEM BAŞLAMADA - CREDENTIALS DURUMU GÖSTER (v20.3)
+   * Credentials eksikse → HATA LOGLASı, ama SISTEM BAŞLASSIN
+   * Transfer zamanında API'ye GERÇEK çağrı yap
    */
   static displayBankNodeInfo(): void {
     const privateKeyMissing = !process.env.OWNER_CRYPTO_PRIVATE_KEY || process.env.OWNER_CRYPTO_PRIVATE_KEY.trim() === "";
@@ -332,56 +337,41 @@ export class BankTransferNode {
     const qnbClientIdMissing = !process.env.QNB_CLIENT_ID || process.env.QNB_CLIENT_ID.trim() === "";
 
     console.log(`\n${"═".repeat(80)}`);
-    console.log(`[GERÇEK TRANSFER SİSTEMİ v20.0] 🚀 USDT TRC-20 + QNB FINANSBANK`);
+    console.log(`[GERÇEK TRANSFER SİSTEMİ v20.3] 🚀 USDT TRC-20 + QNB FINANSBANK`);
     console.log(`${"═".repeat(80)}`);
     console.log(`\n✅ USDT TRC-20 TRANSFERI (Blokzincir)`);
     console.log(`   Hedef Wallet: ${process.env.OWNER_CRYPTO_ADDRESS}`);
-    console.log(`   Private Key: ${privateKeyMissing ? "❌ HATASI: EKSIK" : "✅ Yapılandırıldı"}`);
+    console.log(`   Private Key: ${privateKeyMissing ? "❌ EKSIK (UYARI: Transfer başarısız olacak)" : "✅ Yapılandırıldı"}`);
     console.log(`   RPC: ${process.env.TRON_RPC_URL || "https://api.tronstack.com/jsonrpc"}`);
 
     console.log(`\n✅ QNB FINANSBANK EFT (Gerçek Banka)`);
     console.log(`   Hedef IBAN: ${process.env.OWNER_BANK_IBAN}`);
     console.log(`   Hesap Sahibi: ${process.env.OWNER_NAME}`);
     console.log(`   Banka: ${process.env.OWNER_BANK_NAME}`);
-    console.log(`   API Key: ${qnbApiKeyMissing ? "❌ HATASI: EKSIK" : "✅ Yapılandırıldı"}`);
-    console.log(`   Client ID: ${qnbClientIdMissing ? "❌ HATASI: EKSIK" : "✅ Yapılandırıldı"}`);
+    console.log(`   API Key: ${qnbApiKeyMissing ? "❌ EKSIK (UYARI: Transfer başarısız olacak)" : "✅ Yapılandırıldı"}`);
+    console.log(`   Client ID: ${qnbClientIdMissing ? "❌ EKSIK (UYARI: Transfer başarısız olacak)" : "✅ Yapılandırıldı"}`);
 
-    console.log(`\n⚠️  SISTEM MODU: TAMAMEN GERÇEK (Simülasyon YOKTUR)`);
+    console.log(`\n⚠️  SISTEM MODU: GERÇEK API ÇAĞRILARI (Transfer zamanında)`);
     console.log(`${"═".repeat(80)}\n`);
 
-    // CREDENTIALS KONTROL - EKSIK İSE HATA FIRL AT
     if (privateKeyMissing || qnbApiKeyMissing || qnbClientIdMissing) {
-      console.error(`\n${"═".repeat(80)}`);
-      console.error(`❌ KRITIK HATA: Gerekli Credentials Eksik`);
-      console.error(`${"═".repeat(80)}`);
+      console.warn(`\n⚠️  UYARI: Bazı Credentials Eksik`);
+      console.warn(`   Sistem BAŞLAYACAK ama transfer işlemleri BAŞARÍSIZ olacak`);
+      console.warn(`   Render Dashboard → Environment Variables → Ekle:\n`);
 
       if (privateKeyMissing) {
-        console.error(`\n❌ OWNER_CRYPTO_PRIVATE_KEY: Tron Wallet Private Key eksik`);
-        console.error(`   Render Dashboard → Environment Variables → OWNER_CRYPTO_PRIVATE_KEY ekle`);
-        console.error(`   Format: Hexadecimal (0x ile başlayan 64 karakter)`);
+        console.warn(`   OWNER_CRYPTO_PRIVATE_KEY = [Tron Wallet Private Key]`);
       }
-
       if (qnbApiKeyMissing) {
-        console.error(`\n❌ QNB_API_KEY: QNB Open Banking Bearer Token eksik`);
-        console.error(`   Render Dashboard → Environment Variables → QNB_API_KEY ekle`);
-        console.error(`   Kaynak: https://developer.qnb.com.tr/`);
+        console.warn(`   QNB_API_KEY = [QNB Open Banking Bearer Token]`);
       }
-
       if (qnbClientIdMissing) {
-        console.error(`\n❌ QNB_CLIENT_ID: QNB Open Banking Client ID eksik`);
-        console.error(`   Render Dashboard → Environment Variables → QNB_CLIENT_ID ekle`);
-        console.error(`   Kaynak: https://developer.qnb.com.tr/`);
+        console.warn(`   QNB_CLIENT_ID = [QNB Client ID]`);
       }
-
-      console.error(`\n${"═".repeat(80)}`);
-      console.error(`🚨 SISTEM BAŞLAMIYOR - CREDENTIALS AYARLANANA KADAR`);
-      console.error(`${"═".repeat(80)}\n`);
-
-      // Sistem başlamaz
-      process.exit(1);
+      console.warn(`\n`);
+    } else {
+      console.log(`✅ Tüm Credentials Yapılandırıldı`);
+      console.log(`✅ Sistem Hazır: GERÇEK USDT + GERÇEK EFT TRANSFERI AKTİF\n`);
     }
-
-    console.log(`✅ Tüm Credentials Kontrol Edildi`);
-    console.log(`✅ Sistem Hazır: GERÇEK USDT + GERÇEK EFT TRANSFERI AKTIF\n`);
   }
 }
