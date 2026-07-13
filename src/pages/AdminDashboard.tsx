@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Send, DollarSign, TrendingUp } from 'lucide-react';
+import { LogOut, Send, DollarSign, TrendingUp, Bitcoin } from 'lucide-react';
 
 interface WalletPool {
   totalUSD: number;
@@ -20,7 +20,6 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const [sessionId] = useState(() => localStorage.getItem('adminSessionId') || '');
   const [pool, setPool] = useState<WalletPool | null>(null);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [walletAddress, setWalletAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -53,14 +52,6 @@ export function AdminDashboard() {
         setPool(data.pool);
       } else if (response.status === 401) {
         navigate('/admin/login');
-      } else {
-        console.error('[❌ Dashboard] Havuz hatası:', data);
-      }
-
-      const historyResponse = await fetch(`/api/admin/transfers/history?sessionId=${sessionId}&limit=5`);
-      const historyData = await historyResponse.json();
-      if (historyData.success) {
-        setTransfers(historyData.transfers);
       }
     } catch (err: any) {
       console.error('[❌ Dashboard] Yükleme hatası:', err);
@@ -75,14 +66,8 @@ export function AdminDashboard() {
     setTransferSuccess('');
     setTransferLoading(true);
 
-    if (!walletAddress.trim()) {
-      setTransferError('USDT cüzdan adresi gerekli');
-      setTransferLoading(false);
-      return;
-    }
-
     try {
-      const transferAmount = amount ? parseFloat(amount) : pool?.totalUSD || 0;
+      const transferAmount = amount ? parseFloat(amount) : undefined;
 
       if (transferAmount <= 0) {
         setTransferError('Transfer tutarı 0 dan büyük olmalı');
@@ -90,12 +75,11 @@ export function AdminDashboard() {
         return;
       }
 
-      const response = await fetch('/api/admin/transfer/manual', {
+      const response = await fetch('/api/admin/manual-transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          walletAddress,
           amount: transferAmount
         })
       });
@@ -103,7 +87,7 @@ export function AdminDashboard() {
       const data = await response.json();
 
       if (data.success) {
-        setTransferSuccess(`Transfer başlatıldı! ID: ${data.transferId}`);
+        setTransferSuccess(`Banka transferi başlatıldı! ID: ${data.transferId}`);
         setWalletAddress('');
         setAmount('');
         setTimeout(() => {
@@ -183,59 +167,16 @@ export function AdminDashboard() {
             </div>
           ) : null}
 
-          {/* Transfer Geçmişi */}
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Son Transferler</h2>
-            <div className="space-y-3">
-              {transfers.length === 0 ? (
-                <p className="text-slate-400 text-sm">Henüz transfer yok</p>
-              ) : (
-                transfers.map(transfer => (
-                  <div key={transfer.id} className="bg-slate-700/50 p-3 rounded-lg text-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-white font-medium">${transfer.amount.toFixed(2)}</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        transfer.status === 'success' 
-                          ? 'bg-green-900/20 text-green-400' 
-                          : 'bg-yellow-900/20 text-yellow-400'
-                      }`}>
-                        {transfer.status === 'success' ? '✅ Başarılı' : '⏳ İşleniyor'}
-                      </span>
-                    </div>
-                    {transfer.walletAddress && (
-                      <p className="text-slate-400 text-xs truncate">
-                        Cüzdan: {transfer.walletAddress.substring(0, 20)}...
-                      </p>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Manual Transfer Form */}
         <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
           <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
             <Send className="w-5 h-5 text-blue-400" />
-            Manual Transfer
+            Manuel Banka Transferi
           </h2>
 
           <form onSubmit={handleTransfer} className="space-y-4">
-            {/* USDT Cüzdan */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                USDT Cüzdan Adresi
-              </label>
-              <input
-                type="text"
-                value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                placeholder="TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-
             {/* Tutar */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -273,15 +214,15 @@ export function AdminDashboard() {
             <button
               type="submit"
               disabled={transferLoading || !pool}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
             >
-              {transferLoading ? '⏳ Transfer ediliyor...' : '🚀 Transfer Yap'}
+              {transferLoading ? '⏳ Transfer ediliyor...' : '🚀 Banka Hesabına Gönder'}
             </button>
 
             {/* Info */}
             <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-3">
               <p className="text-xs text-blue-300">
-                ℹ️ Havuzda toplanan canlı parayı USDT cüzdan adresine transfer edebilirsiniz.
+                ℹ️ Havuzda toplanan canlı para, .env dosyasında belirtilen QNB Finansbank IBAN adresine otomatik olarak gönderilecektir.
               </p>
             </div>
           </form>
