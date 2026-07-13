@@ -3,7 +3,7 @@ services:
     name: gaia-simulation
     env: node
     plan: free
-    buildCommand: npm install && npx prisma migrate deploy && npm run build
+    buildCommand: npm install && npx prisma db push --skip-generate && npm run build
     startCommand: node dist/server.cjs
     healthCheckPath: /health
     envVars:
