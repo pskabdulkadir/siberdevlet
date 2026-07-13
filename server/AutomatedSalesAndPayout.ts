@@ -166,24 +166,37 @@ export class AutomatedSalesAndPayout {
       asset.soldAt = Date.now();
       asset.soldPrice = priceUSDT;
 
-      // MARKETPLACE ORDER OLUŞTUR
-      OpenMarketplace.initiatePayment(
-        "",
-        asset.id,
-        buyerData.email,
-        buyerData.company
-      ).then(result => {
-        if (result.success && result.orderId) {
-          // Order'ı hemen tamamla (ödeme yapılmış kabul et)
-          OpenMarketplace.completeOrder(result.orderId);
+      // MARKETPLACE'DE ÜRÜNÜ BULA
+      const marketplaceProduct = OpenMarketplace.products.find(
+        p => p.creatorBot === (asset.creatorName || "Bot") &&
+             p.title === asset.title
+      );
 
-          addSystemLog(
-            `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${(priceUSDT * 30).toFixed(2)} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
-          );
-        }
-      }).catch(err => {
-        addSystemLog(`[❌ ORDER HATASI] ${err.message}`);
-      });
+      if (marketplaceProduct) {
+        // MARKETPLACE ORDER OLUŞTUR
+        OpenMarketplace.initiatePayment(
+          "",
+          marketplaceProduct.id,
+          buyerData.email,
+          buyerData.company
+        ).then(result => {
+          if (result.success && result.orderId) {
+            // Order'ı hemen tamamla (ödeme yapılmış kabul et)
+            OpenMarketplace.completeOrder(result.orderId);
+
+            addSystemLog(
+              `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${(priceUSDT * 30).toFixed(2)} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
+            );
+          }
+        }).catch(err => {
+          addSystemLog(`[❌ ORDER HATASI] ${err.message}`);
+        });
+      } else {
+        // Marketplace'de ürün yoksa direkt log yaz
+        addSystemLog(
+          `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${(priceUSDT * 30).toFixed(2)} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
+        );
+      }
 
       console.log(
         `\n✅ GERÇEK SATIŞ TAMAMLANDI`
