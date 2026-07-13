@@ -53,9 +53,14 @@ export interface Order {
   customerId: string;
   productId: string;
   amountUSD: number; // Fiyat USD cinsinden
-  paymentMethod: "stripe" | "paypal" | "bank_transfer";
+  amountTRY: number; // Türk Lirası (1 USD = 30 TL)
   status: "pending" | "completed" | "failed";
-  stripePaymentIntentId?: string;
+  bankDetails: {
+    iban: string;
+    accountHolder: string;
+    bankName: string;
+    amount: number; // TRY
+  };
   timestamp: number;
   completedAt?: number;
   downloadToken?: string; // Ürün indirme linki
@@ -166,18 +171,16 @@ export class OpenMarketplace {
   }
 
   /**
-   * NORMAL SATIŞ - Stripe/PayPal/Bank Ödeme
+   * SADECE CÜZDAN - Bank Transfer (IBAN)
    */
   static async initiatePayment(
     customerId: string,
     productId: string,
     buyerEmail: string,
-    buyerName: string,
-    paymentMethod: "stripe" | "paypal" | "bank_transfer"
+    buyerName: string
   ): Promise<{
     success: boolean;
     orderId?: string;
-    paymentUrl?: string;
     bankDetails?: object;
     msg: string;
   }> {
@@ -187,6 +190,7 @@ export class OpenMarketplace {
     }
 
     const orderId = `order-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+    const amountTRY = product.price * 30; // 1 USD = 30 TL
 
     // Müşteri yoksa kaydet
     let customer = Array.from(this.customers.values()).find(
@@ -202,14 +206,22 @@ export class OpenMarketplace {
       customerId: customer.id,
       productId,
       amountUSD: product.price,
-      paymentMethod,
+      amountTRY,
       status: "pending",
       timestamp: Date.now(),
-      buyerEmail
+      buyerEmail,
+      bankDetails: {
+        iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
+        accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
+        bankName: process.env.OWNER_BANK || "Ziraat Bankası",
+        amount: amountTRY
+      }
     };
 
+    this.orders.push(order);
+
     console.log(
-      `\n✅ ÖDEME BAŞLANDI`
+      `\n✅ BANKA TRANSFERİ TALIMATLANDIRILDI`
     );
     console.log(
       `   Order: ${orderId}`
@@ -218,139 +230,34 @@ export class OpenMarketplace {
       `   Ürün: "${product.title}"`
     );
     console.log(
-      `   Tutar: $${order.amountUSD.toFixed(2)}`
+      `   Tutar: $${order.amountUSD.toFixed(2)} (≈ ₺${order.amountTRY.toFixed(2)})`
     );
     console.log(
-      `   Yöntem: ${paymentMethod}\n`
+      `   Hesap: ${order.bankDetails.accountHolder}`);
+    console.log(
+      `   IBAN: ${order.bankDetails.iban}\n`
     );
 
-    // Ödeme yöntemine göre işle
-    switch (paymentMethod) {
-      case "stripe":
-        return this.processStripePayment(order, product);
-      case "paypal":
-        return this.processPayPalPayment(order, product);
-      case "bank_transfer":
-        return this.processBankTransfer(order, product);
-      default:
-        return { success: false, msg: "Bilinmeyen ödeme yöntemi" };
-    }
-  }
-
-  /**
-   * Stripe Payment Intent - Webhook Doğrulama
-   */
-  private static async processStripePayment(
-    order: Order,
-    product: MarketplaceProduct
-  ): Promise<{
-    success: boolean;
-    orderId?: string;
-    paymentUrl?: string;
-    msg: string;
-  }> {
-    try {
-      if (!process.env.STRIPE_SECRET_KEY || !this.stripe) {
-        // Fallback
-        this.orders.push(order);
-        return {
-          success: true,
-          orderId: order.id,
-          paymentUrl: `https://pay.stripe.com/checkout?amount=${order.amountUSD}`,
-          msg: `Stripe Fallback: $${order.amountUSD.toFixed(2)}`
-        };
-      }
-
-      const paymentIntent = await this.stripe.paymentIntents.create({
-        amount: Math.round(order.amountUSD * 100),
-        currency: "usd",
-        metadata: {
-          orderId: order.id,
-          productId: product.id,
-          customerEmail: order.buyerEmail
-        }
-      });
-
-      order.stripePaymentIntentId = paymentIntent.id;
-      this.orders.push(order);
-
-      addSystemLog(
-        `[💳 STRIPE] Ödeme başlatıldı: ${order.buyerEmail} - $${order.amountUSD.toFixed(2)}`
-      );
-
-      return {
-        success: true,
-        orderId: order.id,
-        paymentUrl: `https://checkout.stripe.com/pay/${paymentIntent.client_secret}`,
-        msg: `Stripe ödeme linki: $${order.amountUSD.toFixed(2)}`
-      };
-    } catch (error: any) {
-      addSystemLog(`[❌ STRIPE HATASI] ${error.message}`);
-      return { success: false, msg: error.message };
-    }
-  }
-
-  /**
-   * PayPal Ödeme
-   */
-  private static async processPayPalPayment(
-    order: Order,
-    product: MarketplaceProduct
-  ): Promise<{
-    success: boolean;
-    orderId?: string;
-    paymentUrl?: string;
-    msg: string;
-  }> {
-    const paypalUrl = `https://paypal.com/checkout?amount=${order.amountUSD}&currency=USD&orderId=${order.id}`;
-
-    this.orders.push(order);
     addSystemLog(
-      `[🅿️ PAYPAL] Ödeme linki oluşturuldu: ${order.id} - $${order.amountUSD.toFixed(2)}`
+      `[🏦 CÜZDAN TRANSFERI] Order: ${orderId} - ${product.title} - $${order.amountUSD.toFixed(2)}`
     );
 
     return {
       success: true,
-      orderId: order.id,
-      paymentUrl: paypalUrl,
-      msg: `PayPal ödeme linki: $${order.amountUSD.toFixed(2)}`
+      orderId,
+      bankDetails: {
+        iban: order.bankDetails.iban,
+        accountHolder: order.bankDetails.accountHolder,
+        bankName: order.bankDetails.bankName,
+        amountUSD: order.amountUSD.toFixed(2),
+        amountTRY: order.amountTRY.toFixed(2),
+        swift: "TCZBTR2A",
+        orderId: order.id
+      },
+      msg: `Lütfen ₺${order.amountTRY.toFixed(2)} banka transferi yapınız. Order: ${orderId}`
     };
   }
 
-  /**
-   * Banka Transferi - IBAN/SWIFT
-   */
-  private static processBankTransfer(
-    order: Order,
-    product: MarketplaceProduct
-  ): Promise<{
-    success: boolean;
-    orderId?: string;
-    bankDetails?: object;
-    msg: string;
-  }> {
-    const bankDetails = {
-      bankName: process.env.OWNER_BANK || "Ziraat Bankası",
-      accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
-      iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
-      swift: "TCZBTR2A",
-      amountUSD: order.amountUSD.toFixed(2),
-      amountTRY: (order.amountUSD * 30).toFixed(2),
-      reference: order.id
-    };
-
-    this.orders.push(order);
-    addSystemLog(
-      `[🏦 BANKA] Banka transferi: ${order.id} - $${order.amountUSD.toFixed(2)}`
-    );
-
-    return Promise.resolve({
-      success: true,
-      orderId: order.id,
-      bankDetails,
-      msg: `Banka transfer detayları gönderildi`
-    });
-  }
 
   /**
    * ÖDEME TAMAMLAMA - Para alındı, otomatik cüzdana aktarılacak

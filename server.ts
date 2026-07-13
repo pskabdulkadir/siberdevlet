@@ -2109,14 +2109,14 @@ app.get("/api/marketplace/product/:productId", (req, res) => {
   });
 });
 
-// NORMAL SATIŞ - Ödeme başlat (Stripe/PayPal/Bank)
+// SADECE CÜZDAN - Bank Transfer (IBAN)
 app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
-  const { productId, email, name, paymentMethod } = req.body;
+  const { productId, email, name } = req.body;
 
-  if (!productId || !email || !name || !paymentMethod) {
+  if (!productId || !email || !name) {
     return res.status(400).json({
       success: false,
-      error: "Gerekli: productId, email, name, paymentMethod (stripe|paypal|bank_transfer)"
+      error: "Gerekli: productId, email, name"
     });
   }
 
@@ -2130,8 +2130,7 @@ app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
       "", // customerId otomatik oluşturulur
       productId,
       email,
-      name,
-      paymentMethod as any
+      name
     );
 
     res.json(result);
@@ -2181,10 +2180,10 @@ app.get("/api/payout/stats", (req, res) => {
   });
 });
 
-// CANLIDA SATIŞ SİMÜLASYONU - Test için otomatik satış yap
+// CANLIDA SATIŞ - Test için otomatik satış yap (SADECE CÜZDAN)
 app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
   try {
-    const { productId, buyerEmail, buyerName, paymentMethod } = req.body;
+    const { productId, buyerEmail, buyerName } = req.body;
 
     // Random ürün seç
     let product = productId
@@ -2198,15 +2197,13 @@ app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
     // Random müşteri
     const email = buyerEmail || `buyer-${Date.now()}@test.com`;
     const name = buyerName || "Test Buyer";
-    const method = (paymentMethod || "bank_transfer") as any;
 
-    // Ödeme başlat
+    // Ödeme başlat (SADECE CÜZDAN)
     const checkoutResult = await OpenMarketplace.initiatePayment(
       "",
       product.id,
       email,
-      name,
-      method
+      name
     );
 
     if (!checkoutResult.success) {
@@ -2221,25 +2218,33 @@ app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
       return res.status(400).json({ success: false, error: "Ödeme doğrulamadı" });
     }
 
-    console.log(`\n✅ SATIŞ BAŞARILI`);
+    console.log(`\n✅ SATIŞ BAŞARILI (CÜZDAN TRANSFERI)`);
     console.log(`   Order: ${orderId}`);
     console.log(`   Ürün: ${product.title}`);
     console.log(`   Tutar: $${product.price.toFixed(2)}`);
+    console.log(`   TL: ₺${(product.price * 30).toFixed(2)}`);
     console.log(`   Alıcı: ${email}`);
+    console.log(`   IBAN: ${process.env.OWNER_IBAN || "TR3200157..."}`);
     console.log(`   ↓ Cüzdana aktarılıyor...\n`);
 
     addSystemLog(
-      `[✅ TEST SATIŞ] ${product.title} - $${product.price.toFixed(2)} - ${email}`
+      `[✅ CÜZDAN SATIŞI] ${product.title} - $${product.price.toFixed(2)} - ${email}`
     );
 
     res.json({
       success: true,
-      message: "Satış simülasyonu başarılı - Para cüzdana aktarılıyor",
+      message: "Satış başarılı - Cüzdan transferi talimatı gönderildi",
       order: {
         id: orderId,
         product: product.title,
-        price: product.price,
+        priceUSD: product.price,
+        priceTRY: product.price * 30,
         buyer: email,
+        bankDetails: {
+          iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
+          accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
+          bankName: process.env.OWNER_BANK || "Ziraat Bankası"
+        },
         status: "completed"
       }
     });
