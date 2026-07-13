@@ -25,22 +25,12 @@ function initializeAutonomousEnvironment() {
     process.env.DATABASE_URL = "local_memory_fallback";
   }
 
-  // v13.4: KURUCU BİLGİLERİ - SADECE POLYGON USDT
-  // 3. KURUCU ADI
+  // v18.0: KURUCU BİLGİLERİ - SADECE BANKA/CÜZDAN TRANSFERİ
   process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
+  process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
+  process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
 
-  // v13.4: POLYGON USDT - TEK ÖDEME YÖNTEMİ
-  // 4. CRYPTO NETWORK: Polygon Mainnet
-  process.env.CRYPTO_NETWORK = process.env.CRYPTO_NETWORK || "Polygon (USDT Mainnet)";
-
-  // 5. CRYPTO ASSET: USDT Stabil Para
-  process.env.CRYPTO_ASSET = process.env.CRYPTO_ASSET || "USDT";
-
-  // 6. KURUCU USDT CÜZDANI (Polygon Mainnet)
-  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
-  process.env.OWNER_CRYPTO_WALLET = process.env.OWNER_CRYPTO_ADDRESS;
-
-  // 9. v14.0: TAMAMEN GERÇEK LIVE MODE - SİMÜLASYON KAPALI
+  // v18.0: TAMAMEN GERÇEK LIVE MODE - BANKA/CÜZDAN TRANSFERI
   console.log(
     "\n" + "═".repeat(80)
   );
@@ -48,57 +38,28 @@ function initializeAutonomousEnvironment() {
     "[SİBER-KURULUM] 🔴 TAMAMEN GERÇEK LIVE MODE - SİMÜLASYON KAPALI"
   );
   console.log(
-    "[SİBER-KURULUM] 💰 CANLI PARA AKIŞI: Otomatik Bot Satışları → Gerçek USDT Kazancı → Cüzdan Transferi"
+    "[SİBER-KURULUM] 💰 CANLI PARA AKIŞI: Otomatik Bot Satışları → Cüzdan Transferi → Banka IBAN"
   );
   console.log(
-    "[SİBER-KURULUM] ✅ Sistem Durumu: GERÇEK ÜRETİM, GERÇEK SATIŞ, GERÇEK PARA"
+    "[SİBER-KURULUM] ✅ Sistem Durması: GERÇEK ÜRETİM, GERÇEK SATIŞ, GERÇEK PARA"
   );
   console.log(
-    "[SİBER-KURULUM] 🚨 DİKKAT: Her satış gerçek Polygon USDT'ye dönüştürülüyor ve otomatik cüzdana çekiliyor"
+    "[SİBER-KURULUM] ✅ Ödeme Yöntemi: Banka Transferi (IBAN) - Stripe/PayPal/Polygon KALDIRDI"
   );
   console.log(
     "═".repeat(80) + "\n"
   );
 
-  // v13.4: KURUCU ENTEGRASYON
+  // v18.0: KURUCU ENTEGRASYON
   console.log(
-    `[SİBER-DEVLET] 👑 Kurucu Entegrasyonu: ${process.env.OWNER_NAME} - Polygon USDT Cüzdanı Bağlı`
-  );
-
-  // v9.8: KRIPTO USDT ENTEGRASYON LOGU
-  console.log(
-    `[SİBER-DEVLET] 🪙 v9.8 Polygon USDT Entegrasyonu: ${process.env.CRYPTO_ASSET} Cüzdanı Bağlandı`
+    `[SİBER-DEVLET] 👑 Kurucu: ${process.env.OWNER_NAME}`
   );
   console.log(
-    `[SİBER-DEVLET] 🔗 Network: ${process.env.CRYPTO_NETWORK}`
+    `[SİBER-DEVLET] 🏦 Banka: ${process.env.OWNER_BANK_NAME}`
   );
-  if (process.env.OWNER_CRYPTO_ADDRESS && process.env.OWNER_CRYPTO_ADDRESS !== "0x0000000000000000000000000000000000000000") {
-    console.log(
-      `[SİBER-DEVLET] 💰 USDT Cüzdan Adresi: ${process.env.OWNER_CRYPTO_ADDRESS}`
-    );
-  } else {
-    console.log(
-      `[⚠️ KRİTİK] OWNER_CRYPTO_ADDRESS Render env'de ayarlanmadı!`
-    );
-    console.log(
-      `            Payout simülasyon modunda çalışacak (gerçek transfer yapılmayacak)`
-    );
-  }
-
-  // Private key kontrol
-  const hasPrivateKey = !!process.env.OWNER_CRYPTO_PRIVATE_KEY;
   console.log(
-    `[SİBER-DEVLET] 🔑 Private Key: ${hasPrivateKey ? "✅ YÜKLü" : "⚠️ YÜKLEMEMİŞ (Simülasyon modu)"}`
+    `[SİBER-DEVLET] 💳 IBAN: ${process.env.OWNER_BANK_IBAN}`
   );
-
-  if (!hasPrivateKey) {
-    console.log(
-      `\n⚠️ UYARI: Polygon USDT transferi için OWNER_CRYPTO_PRIVATE_KEY env'de ayarlanmalı`
-    );
-    console.log(
-      `          Şu an simülasyon modunda: İşlemler kaydedilecek ama blockchain'e gönderilmeyecek\n`
-    );
-  }
 
   // v10.0: SIFIR SERMAYE GÜVENLIK DUVARÜ
   console.log(
@@ -115,18 +76,18 @@ function initializeAutonomousEnvironment() {
     `${"═".repeat(80)}\n`
   );
 
-  // v11.0: GERÇEK DÜNYA ENTEGRASYON KÖPRÜSÜ
+  // v18.0: GERÇEK DÜNYA ENTEGRASYON KÖPRÜSÜ
   console.log(
     `\n${"═".repeat(80)}\n` +
-    `[KÖPRÜ v11.0] 🌐 GERÇEK DÜNYA BAĞLANTISI AKTİF\n` +
+    `[KÖPRÜ v18.0] 🌐 MARKETPLACE - BANKA TRANSFERI AKTİF\n` +
     `${"═".repeat(80)}\n`
   );
-  console.log(`✅ Mağaza Dış Yazılımcılara Açıldı (Marketplace aktif)`);
-  console.log(`✅ Alıcı Ödemeleri Doğrudan Cüzdana Kilitlendi`);
-  console.log(`✅ USDT Cüzdanı: ${process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn"}`);
-  console.log(`✅ Banka IBAN'ı: ${process.env.OWNER_IBAN || "TR320015700000000091775122"} (Abdulkadir Kan)`);
+  console.log(`✅ Marketplace: Dış Alıcılara Açıldı`);
+  console.log(`✅ Satış Yöntemi: Banka Transferi (IBAN)`);
+  console.log(`✅ Hedef IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`);
+  console.log(`✅ Hesap Sahibi: ${process.env.OWNER_NAME}`);
   console.log(
-    `\n${" ".repeat(20)}💰 Gerçek Alıcılar Veri Pazarı Üzerinden Satın Alabilir!\n` +
+    `\n${" ".repeat(20)}💰 Gerçek Alıcılar Marketplace Üzerinden Satın Alabilir!\n` +
     `${"═".repeat(80)}\n`
   );
 

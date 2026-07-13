@@ -1,17 +1,16 @@
 import { state, addSystemLog } from "./simulation.js";
 import crypto from "crypto";
-import Stripe from "stripe";
 
 /**
- * v17.0: OpenMarketplace - NORMAL SATIŞLAR
- * TAMAMEN DIŞ AÇIK SİSTEM - Para Kabul Edilir
+ * v18.0: OpenMarketplace - SADECE BANKA TRANSFERİ
+ * TAMAMEN DIŞ AÇIK SİSTEM - Banka Transferi ile Ödeme Kabul
  *
  * Flow:
  * 1. Bot ürün üret
  * 2. Sosyal medyaya paylaş (GitHub, Discord, Telegram, Reddit vb)
  * 3. Herkese açık marketplace - Müşteriler ürün görüp satın al
- * 4. Stripe/PayPal/Bank ile ödeme al
- * 5. Otomatik cüzdan hesabına para transfer (günlük)
+ * 4. IBAN ile banka transferi ödeme talimatı gönder
+ * 5. Ödeme doğrulandığında otomatik cüzdan hesabına para transfer
  */
 
 export interface MarketplaceProduct {
@@ -68,15 +67,7 @@ export interface Order {
 }
 
 export class OpenMarketplace {
-  // Stripe lazy init
-  private static _stripe: Stripe | null = null;
-
-  private static get stripe(): Stripe {
-    if (!this._stripe && process.env.STRIPE_SECRET_KEY) {
-      this._stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    }
-    return this._stripe as any;
-  }
+  // v18.0: Stripe/PayPal kaldırıldı - sadece banka transferi
 
   // Global marketplace ürünleri
   static products: MarketplaceProduct[] = [];
