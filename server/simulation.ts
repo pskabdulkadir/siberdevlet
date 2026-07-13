@@ -14,6 +14,7 @@ import { ExternalApiMarket } from "./ExternalApiMarket.js";
 import { MarketingManager } from "./MarketingManager.js";
 import { AutomatedMarketing } from "./AutomatedMarketing.js";
 import { RealWorldGateway } from "./RealWorldGateway.js";
+import { AutomatedSalesAndPayout, setCurrentTick } from "./AutomatedSalesAndPayout.js";
 import {
   Bot,
   BotMinistry,
@@ -699,6 +700,10 @@ export class PlanetManager {
 
     // v13.7: OTOMATIK SOSYAL MEDYA PAYLAŞIMI (Twitter, Reddit, GitHub, Medium, Discord, Telegram)
     await AutomatedMarketing.executeAutomatedMarketing(state.activeTicks);
+
+    // v14.0: OTOMATIK DIS SATIS VE PAYOUT (Bot Ürünleri → Dış Alıcılar → Polygon USDT)
+    setCurrentTick(state.activeTicks);
+    AutomatedSalesAndPayout.executeAutoSalesCycle(state.activeTicks);
 
     // v12.0: Pazarlama istatistiklerini state'e senkronize et
     state.marketingCampaigns = MarketingManager.campaigns.length;

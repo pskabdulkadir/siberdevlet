@@ -13,10 +13,10 @@ import { BotRole, BotMinistry, BotStatus } from "../src/types.js";
  */
 export class AutoSpawnController {
   static lastSpawnTick = 0;
-  static readonly SPAWN_CHECK_INTERVAL = 100; // Her 100 Tick'te kontrol et
-  static readonly MIN_SUBSIDY_FOR_SPAWN = 2000; // Minimum 2000 GAIA gerekli
+  static readonly SPAWN_CHECK_INTERVAL = 50; // 100 → 50: Spawn kontrol hızını 2x artır
+  static readonly MIN_SUBSIDY_FOR_SPAWN = 1500; // 2000 → 1500: Spawn limiti düşür (daha hızlı spawn)
   static readonly SPAWN_COST = 40;
-  static readonly MAX_BOTS = 200; // Maksimum 200 bota kadar büyüyebilsin
+  static readonly MAX_BOTS = 300; // 200 → 300: Maksimum bot sayısını artır
 
   // En çok ihtiyaç duyulan meslek sınıfını belirle
   static getBottleneckRole(): BotRole {

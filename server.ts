@@ -189,6 +189,7 @@ import { RealWorldGateway } from "./server/RealWorldGateway.js";
 import { AutomationManager } from "./server/AutomationManager.js";
 import { PolygonValidator } from "./server/PolygonValidator.js";
 import { ExternalApiMarket } from "./server/ExternalApiMarket.js";
+import { AutomatedSalesAndPayout } from "./server/AutomatedSalesAndPayout.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -344,6 +345,9 @@ async function initializeSimulation() {
   if (inactiveBots.length > 0) {
     addSystemLog(`[v7.0-Mobilization] 🦾 ${inactiveBots.length} uyuşuk bot silahlı ve aktif hale getirildi. Aktif bot sayısı: ${state.bots.filter(b => b.status === BotStatus.ACTIVE).length} / ${state.bots.length}`);
   }
+
+  // v14.0: Dış alıcıları sistem başlatırken kaydet
+  AutomatedSalesAndPayout.initializeExternalBuyers();
 
   // Persist initial state to database
   await StateManager.persistAllState();
@@ -1890,6 +1894,72 @@ app.post("/api/admin/start-full-automation", express.json(), async (req, res) =>
       success: false,
       error: error.message
     });
+  }
+});
+
+// v14.0: OTOMATİK DIS SATIS VE PAYOUT YÖNETIMI
+// Dış satış istatistikleri
+app.get("/api/automated-sales/stats", (req, res) => {
+  const stats = AutomatedSalesAndPayout.getSalesStats();
+  res.json({
+    success: true,
+    timestamp: Date.now(),
+    salesAndPayout: stats,
+    systemMetrics: {
+      totalExternalRevenue: state.externalRevenue,
+      totalPayoutsProcessed: state.totalPayoutsProcessed,
+      externalSalesCount: state.externalSalesCount
+    }
+  });
+});
+
+// Otomatik satış yapılandırmasını güncelle
+app.post("/api/automated-sales/config", express.json(), (req, res) => {
+  try {
+    const { enabled, saleCheckInterval, payoutThreshold, autoPayoutEnabled } = req.body;
+
+    if (typeof enabled === "boolean" || saleCheckInterval || payoutThreshold || typeof autoPayoutEnabled === "boolean") {
+      const config = {
+        ...(typeof enabled === "boolean" && { enabled }),
+        ...(saleCheckInterval && { saleCheckInterval }),
+        ...(payoutThreshold && { payoutThreshold }),
+        ...(typeof autoPayoutEnabled === "boolean" && { autoPayoutEnabled })
+      };
+
+      AutomatedSalesAndPayout.updateConfig(config);
+      addSystemLog(`[⚙️ AUTO-SALES] Yapılandırma güncellendi`);
+
+      res.json({
+        success: true,
+        message: "Otomatik satış yapılandırması güncellendi",
+        config: AutomatedSalesAndPayout.getSalesStats()
+      });
+    } else {
+      res.status(400).json({ error: "Geçersiz parametreler" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Acil payout tetikle
+app.post("/api/automated-sales/emergency-payout", express.json(), async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    addSystemLog(`[🚨 ACIL-PAYOUT] ${amount || state.externalRevenue} USDT çekilmek üzere...`);
+    console.log(`\n🚨 ACIL PAYOUT TETİKLENİYOR: ${amount || state.externalRevenue} USDT`);
+
+    await AutomatedSalesAndPayout.emergencyPayout(amount);
+
+    const stats = AutomatedSalesAndPayout.getSalesStats();
+    res.json({
+      success: true,
+      message: "Acil payout tetiklendi",
+      stats: stats
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
