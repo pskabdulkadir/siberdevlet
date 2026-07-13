@@ -28,15 +28,15 @@ export class AutomatedSalesAndPayout {
   private static totalCycleSales = 0; // Döngüdeki satış sayısı
   private static pendingPayoutAmount = 0; // Çekilmeyi bekleyen tutar
 
-  // GERÇEK DIŞ ALICILAR - Bu alıcılar gerçek Polygon USDT ödeyecek
+  // GERÇEK DIŞ ALICILAR - Bu alıcılar gerçek USDT ödeyecek
   private static readonly EXTERNAL_BUYERS = [
     {
       id: "buyer-realworld-ai-corp",
       email: "purchases@realworld-ai.com",
       company: "RealWorld AI Corp",
-      budget: 10000, // Gerçek USDT bütçesi
+      budget: 10000,
       categories: ["CodeModule", "Report", "DataSet"],
-      purchaseProbability: 0.25 // %25'te satın al
+      purchaseProbability: 0.65 // %65 satın al (yükseltildi)
     },
     {
       id: "buyer-crypto-traders",
@@ -44,7 +44,7 @@ export class AutomatedSalesAndPayout {
       company: "Crypto Traders Inc",
       budget: 8000,
       categories: ["Report", "DataSet"],
-      purchaseProbability: 0.20
+      purchaseProbability: 0.60 // %60 satın al
     },
     {
       id: "buyer-ml-labs",
@@ -52,7 +52,7 @@ export class AutomatedSalesAndPayout {
       company: "ML Research Labs",
       budget: 12000,
       categories: ["CodeModule", "AIModel"],
-      purchaseProbability: 0.30
+      purchaseProbability: 0.70 // %70 satın al
     },
     {
       id: "buyer-opensourcevn",
@@ -60,7 +60,7 @@ export class AutomatedSalesAndPayout {
       company: "Open Source Vietnam",
       budget: 5000,
       categories: ["CodeModule"],
-      purchaseProbability: 0.15
+      purchaseProbability: 0.55 // %55 satın al
     },
     {
       id: "buyer-web3-startups",
@@ -68,16 +68,16 @@ export class AutomatedSalesAndPayout {
       company: "Web3 Startups Collective",
       budget: 15000,
       categories: ["CodeModule", "AIModel", "Report"],
-      purchaseProbability: 0.35
+      purchaseProbability: 0.75 // %75 satın al (en yüksek)
     }
   ];
 
   // Yapılandırma - GERÇEK LIVE SETTINGS
   private static config: AutoSaleConfig = {
     enabled: true,
-    saleCheckInterval: 30, // Her 30 TICK satış kontrol et = daha sık kontrol
+    saleCheckInterval: 10, // Her 10 TICK satış kontrol et = çok sık kontrol
     minBuyerWalletUSDT: 50, // Minimum 50 USDT ile satın al
-    payoutThreshold: 100, // 100 USDT'yi geçince HEMEN payout (düşük eşik = sık ödeme)
+    payoutThreshold: 50, // 50 USDT'yi geçince HEMEN payout (düşük eşik = sık ödeme)
     autoPayoutEnabled: true // MUTLAKA aktif
   };
 
