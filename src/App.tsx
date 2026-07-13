@@ -2083,14 +2083,50 @@ export default function App() {
                         <label className="text-[10px] text-slate-400 block font-mono uppercase tracking-wider mb-1">
                           Alıcı Kripto Cüzdan Adresi (Polygon/USDT ERC20)
                         </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Örn: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
-                          value={ownerCryptoWallet}
-                          onChange={(e) => setOwnerCryptoWallet(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
-                        />
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Örn: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+                            value={ownerCryptoWallet}
+                            onChange={(e) => setOwnerCryptoWallet(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/50 rounded-lg p-2 text-xs text-slate-200 font-mono"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (typeof window !== 'undefined' && (window as any).ethereum) {
+                                  try {
+                                    const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+                                    if (accounts && accounts.length > 0) {
+                                      setOwnerCryptoWallet(accounts[0]);
+                                      setSuccessMsg(`✅ MetaMask cüzdan bağlandı: ${accounts[0].substring(0, 6)}...${accounts[0].substring(38)}`);
+                                    }
+                                  } catch (err: any) {
+                                    setApiError(`MetaMask bağlantı hatası: ${err.message}`);
+                                  }
+                                } else {
+                                  setApiError("MetaMask yüklü değil. Lütfen tarayıcı uzantısını yükleyin.");
+                                }
+                              }}
+                              className="flex-1 bg-blue-900/40 hover:bg-blue-900/60 border border-blue-700/50 text-blue-300 text-xs py-1.5 px-2 rounded font-mono"
+                            >
+                              🦊 MetaMask Bağla
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Switch to new wallet
+                                setOwnerCryptoWallet("0xDe0591C5a00Ef61cFA4b5b6b6584B9C979f44C30");
+                                setSuccessMsg("✅ Yeni cüzdan ayarlandı: 0xDe0591C5a00Ef61cFA4b5b6b6584B9C979f44C30");
+                              }}
+                              className="flex-1 bg-green-900/40 hover:bg-green-900/60 border border-green-700/50 text-green-300 text-xs py-1.5 px-2 rounded font-mono"
+                            >
+                              ✓ Yeni Cüzdan Kullan
+                            </button>
+                          </div>
+                        </div>
                         <span className="text-[9px] text-slate-500 block mt-1">Kripto / Web3 ödemeleri Polygon akıllı kontratı ile bu adrese gönderilir.</span>
                       </div>
 
@@ -2167,6 +2203,65 @@ export default function App() {
                         <span>Anında Çekim Talebi Gönder (Cash-Out)</span>
                       </button>
                     </form>
+                  </div>
+
+                  {/* Wallet Security & Cleanup */}
+                  <div className="bg-red-950/20 border border-red-900/50 rounded-lg p-3.5 space-y-2.5">
+                    <div className="border-b border-red-900/50 pb-1.5">
+                      <span className="text-[10px] font-mono text-red-400 block uppercase tracking-wider">🔐 Cüzdan Güvenliği ve Temizlik</span>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Eski cüzdanı revoke et ve yeni cüzdana geç. MetaMask ile doğrudan blockchain işlemleri yapın.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const oldWallet = "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
+                          const message = `
+⚠️ ESKI CÜZDANI TEMİZLE
+
+Adım 1: MetaMask'ı aç
+Adım 2: Bu adrese git:
+https://polygonscan.com/address/${oldWallet}#tokentxns
+
+Adım 3: "Token Approvals" tab'ında
+- Tüm approvals → Revoke
+- Hepsini onaylı metmask'ta
+
+Adım 4: Uygulamaya dön ve "Yeni Cüzdan Kullan" butonuna tıkla
+
+Hazır!
+                          `;
+                          alert(message);
+                        }}
+                        className="w-full bg-red-900/60 hover:bg-red-900/80 border border-red-700/50 text-red-200 text-xs py-2 px-3 rounded font-mono flex items-center justify-center space-x-1.5 transition"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Eski Cüzdanı PolygonScan'de Aç (Revoke)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText("0x0f4Bdc545e811060c48B7f16029e5580cB70a680");
+                          setSuccessMsg("✅ Eski cüzdan adresi kopyalandı");
+                        }}
+                        className="w-full bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 text-slate-300 text-xs py-1.5 px-3 rounded font-mono flex items-center justify-center space-x-1.5 transition"
+                      >
+                        <span>Eski Cüzdan: 0x0f4Bdc... (Kopyala)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText("0xDe0591C5a00Ef61cFA4b5b6b6584B9C979f44C30");
+                          setSuccessMsg("✅ Yeni cüzdan adresi kopyalandı");
+                        }}
+                        className="w-full bg-green-900/60 hover:bg-green-900/80 border border-green-700/50 text-green-200 text-xs py-1.5 px-3 rounded font-mono flex items-center justify-center space-x-1.5 transition"
+                      >
+                        <span>Yeni Cüzdan: 0xDe0591... (Kopyala)</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
