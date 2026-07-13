@@ -419,7 +419,19 @@ export const RealityBridge = {
 };
 
 export function seedInitialSimulation() {
-  addSystemLog("Üretim modu etkin: otomatik seed ve sahte alıcı oluşturma devre dışı.");
+  // v30.0: Kritik botların her zaman var olmasını sağla
+  const requiredRoles = [
+    { role: BotRole.HAMMADDE_AVCISI, ministry: BotMinistry.URETIM, name: "Hammadde Avcısı-Alpha" },
+    { role: BotRole.YAZILIMCI, ministry: BotMinistry.ALTYAPI_EVRIM, name: "Yazılımcı-Ada" },
+    { role: BotRole.GUMRUK_KAPISI, ministry: BotMinistry.ADALET, name: "Gümrük Kapısı-Kerberos" }
+  ];
+
+  for (const { role, ministry, name } of requiredRoles) {
+    if (!state.bots.some(b => b.role === role)) {
+      state.bots.push(new CyberBot(name, role, ministry));
+      addSystemLog(`[SİSTEM-ÇEKİRDEK] Kritik bot ${name} (${role}) oluşturuldu.`);
+    }
+  }
 }
 
 // PlanetManager - Siber-Dünya Anayasası ve Kurallarını denetleyen global yönetim sınıfı
