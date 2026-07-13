@@ -46,9 +46,7 @@ interface ManualTransfer {
 export class AdminPanel {
   // Admin Credentials (Hardcoded - Render'da env var olarak ayarlanabilir)
   private static readonly ADMIN_EMAIL = process.env.ADMIN_EMAIL || "psikologabdulkadirkan@gmail.com";
-  private static readonly ADMIN_PASSWORD_HASH = this.hashPassword(
-    process.env.ADMIN_PASSWORD || "Abdulkadir1983"
-  );
+  private static readonly ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Abdulkadir1983";
 
   // Session yönetimi
   private static sessions: Map<string, AdminSession> = new Map();
@@ -68,6 +66,11 @@ export class AdminPanel {
   // Şifre hashleme (basit, güvenli ortamda bcrypt kullan)
   private static hashPassword(password: string): string {
     return crypto.createHash("sha256").update(password).digest("hex");
+  }
+
+  // Admin password hash (lazy computed)
+  private static getAdminPasswordHash(): string {
+    return this.hashPassword(this.ADMIN_PASSWORD);
   }
 
   /**
@@ -106,12 +109,22 @@ export class AdminPanel {
    * Admin Login - Session oluştur
    */
   static login(email: string, password: string): { success: boolean; sessionId?: string; error?: string } {
+    console.log(`[🔐 LOGIN CHECK]`);
+    console.log(`   Expected Email: ${this.ADMIN_EMAIL}`);
+    console.log(`   Received Email: ${email}`);
+    console.log(`   Email Match: ${email === this.ADMIN_EMAIL}`);
+
     if (email !== this.ADMIN_EMAIL) {
       return { success: false, error: "Email veya şifre yanlış" };
     }
 
     const passwordHash = this.hashPassword(password);
-    if (passwordHash !== this.ADMIN_PASSWORD_HASH) {
+    const expectedHash = this.getAdminPasswordHash();
+    console.log(`   Expected Hash: ${expectedHash.substring(0, 20)}...`);
+    console.log(`   Received Hash: ${passwordHash.substring(0, 20)}...`);
+    console.log(`   Hash Match: ${passwordHash === expectedHash}`);
+
+    if (passwordHash !== expectedHash) {
       return { success: false, error: "Email veya şifre yanlış" };
     }
 

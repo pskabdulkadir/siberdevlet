@@ -18,6 +18,10 @@ const router = express.Router();
 router.post("/api/admin/login", express.json(), (req, res) => {
   const { email, password } = req.body;
 
+  console.log(`[📧 LOGIN ATTEMPT]`);
+  console.log(`   Email: ${email}`);
+  console.log(`   Password length: ${password?.length || 0}`);
+
   if (!email || !password) {
     return res.status(400).json({
       success: false,
@@ -26,6 +30,8 @@ router.post("/api/admin/login", express.json(), (req, res) => {
   }
 
   const result = AdminPanel.login(email, password);
+
+  console.log(`[📧 LOGIN RESULT] Success: ${result.success}`);
 
   if (!result.success) {
     return res.status(401).json(result);
