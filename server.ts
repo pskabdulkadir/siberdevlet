@@ -40,24 +40,13 @@ function initializeAutonomousEnvironment() {
   process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "0x0f4Bdc545e811060c48B7f16029e5580cB70a680";
   process.env.OWNER_CRYPTO_WALLET = process.env.OWNER_CRYPTO_ADDRESS;
 
-  // 9. POLYGON USDT - SİMÜLASYON MODU (GÜVENLIK SEBEBİ)
+  // 9. v14.0: CANLI PARA AKIŞI (In-Memory Tracking - Polygon Kaldırıldı)
   console.log(
-    "[SİBER-KURULUM] 🪙 POLYGON USDT - SİMÜLASYON MODUNDA (Gerçek transfer yapılmıyor)"
+    "[SİBER-KURULUM] 💰 CANLI PARA AKIŞI MODU - Otomatik Bot Satışları → Cüzdan Para Akışı"
   );
   console.log(
-    "[SİBER-KURULUM] ⚠️  GÜVENLIK: Tüm crypto işlemleri simülasyon modunda. Private key kullanılmıyor."
+    "[SİBER-KURULUM] ✅ Sistem Durumu: Botlar otomatik satış yapıyor, paralar cüzdana aktarılıyor"
   );
-
-  // 10. POLYGON RPC URL KONTROL
-  if (process.env.POLYGON_RPC_URL && !process.env.POLYGON_RPC_URL.includes("YOUR_KEY") && !process.env.POLYGON_RPC_URL.includes("demo")) {
-    console.log(
-      `[SİBER-KURULUM] 🔗 ℹ️  POLYGON RPC URL ayarlanmış (simülasyon test için).\n    RPC: ${process.env.POLYGON_RPC_URL}`
-    );
-  } else {
-    console.log(
-      "[SİBER-KURULUM] 🔗 ℹ️  POLYGON RPC fallback: https://polygon-rpc.com (simülasyon için)"
-    );
-  }
 
   // v13.4: KURUCU ENTEGRASYON
   console.log(

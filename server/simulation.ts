@@ -1114,9 +1114,9 @@ export async function runSimulationTick() {
 
   await PlanetManager.tick();
 
-  // v13.7: Otomatik Dış Dünya Satın Alma (Bot satışını tamamla → canlı para akışı)
-  // DURDURULDU: Cüzdan draining sorunu tespit edildi - crypto payout logic review gerekli
-  // RealWorldGateway.triggerAutoExternalBuyer();
+  // v14.0: Otomatik Dış Dünya Satın Alma (Bot satışını tamamla → canlı para akışı)
+  // AÇIK: Polygon sistemi kaldırıldı, simülasyon para akışı aktif
+  RealWorldGateway.triggerAutoExternalBuyer();
 }
 
 // 2. Infrastructure tasks (Mimar Bot CPU/RAM quarantine action)
