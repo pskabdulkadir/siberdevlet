@@ -115,7 +115,7 @@ router.get("/api/admin/wallet-pool", (req, res) => {
  * POST /api/admin/transfer/manual
  * Manuel transfer tetikle - havuzdan cüzdana
  */
-router.post("/api/admin/transfer/manual", express.json(), (req, res) => {
+router.post("/api/admin/transfer/manual", express.json(), async (req, res) => {
   const { sessionId, walletAddress, amount } = req.body;
 
   if (!sessionId || !walletAddress) {
@@ -125,7 +125,7 @@ router.post("/api/admin/transfer/manual", express.json(), (req, res) => {
     });
   }
 
-  const result = AdminPanel.triggerManualTransfer(sessionId, walletAddress, amount);
+  const result = await AdminPanel.triggerManualTransfer(sessionId, walletAddress, amount);
 
   if (!result.success) {
     return res.status(400).json(result);
