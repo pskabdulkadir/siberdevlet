@@ -1,6 +1,9 @@
 import { state, addSystemLog } from "./simulation.js";
 import { ExternalApiMarket } from "./ExternalApiMarket.js";
 import { BankTransferNode } from "./BankTransferNode.js";
+import { AdminPanel } from "./AdminPanel.js";
+import { addSystemLog } from "./simulation.js";
+import crypto from "crypto";
 
 /**
  * v11.0: RealWorldGateway
@@ -362,12 +365,16 @@ export class RealWorldGateway {
       );
 
       // BANKA TRANSFERI DEVRE DIŞI - Para havuzda tutulacak
-      // const amountTRY = buyAmount * 30;
-      // const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
-      // BankTransferNode ve PayoutManager çağrıları devre dışı
+      const amountTRY = buyAmount * 30;
+      const txId = `sale-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+
+      // Para havuza ekle (HAVUZ TUTMA)
+      AdminPanel.addToWalletPool(buyAmount, amountTRY, `Otobot Satış: ${product.title}`, txId).catch(err => {
+        console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+      });
 
       addSystemLog(
-        `[✅ HAVUZ] ${product.title} - $${buyAmount.toFixed(2)} havuza eklendi (Transfer devre dışı)`
+        `[✅ HAVUZ] ${product.title} - $${buyAmount.toFixed(2)} havuza eklendi`
       );
     }
 

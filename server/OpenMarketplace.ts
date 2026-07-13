@@ -1,5 +1,7 @@
 import { state, addSystemLog } from "./simulation.js";
 import { BankTransferNode } from "./BankTransferNode.js";
+import { AdminPanel } from "./AdminPanel.js";
+import { addSystemLog } from "./simulation.js";
 import crypto from "crypto";
 
 /**
@@ -296,27 +298,15 @@ export class OpenMarketplace {
       `[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - $${order.amountUSD.toFixed(2)} - Ürün: ${product?.title}`
     );
 
-    // BANKA TRANSFERI DEVRE DIŞI - Para sadece havuzda tutulacak
-    // BankTransferNode.processRealTransfer çağrısı commented out
-    // Gelecekte aktif hale getirmek için bunu uncomment edin
-    /*
-    BankTransferNode.processRealTransfer(
-      orderId,
+    // Para havuza ekle (HAVUZ TUTMA)
+    AdminPanel.addToWalletPool(
       order.amountUSD,
       order.amountTRY,
-      order.bankDetails.iban,
-      order.buyerEmail,
-      product?.title || "Bilinmeyen Ürün"
-    ).then(result => {
-      if (result.success) {
-        addSystemLog(
-          `[🏦 GERÇEK TRANSFER] Order: ${orderId} - Marketplace Transfer ID: ${result.transferId}`
-        );
-      }
-    }).catch(err => {
-      addSystemLog(`[❌ TRANSFER HATASI] Order: ${orderId} - ${err.message}`);
+      `Marketplace Satış: ${product?.title || "Bilinmeyen Ürün"}`,
+      orderId
+    ).catch(err => {
+      console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
     });
-    */
 
     return true;
   }
