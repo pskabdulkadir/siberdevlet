@@ -29,8 +29,7 @@ import {
   SkillMatrix
 } from "../src/types.js";
 
-// v9.5: Open-Source AI Integration (Anahtarsız)
-// Gemini API varsa kullan, yoksa açık kaynak fallback kullan
+// Canlı üretim yalnızca doğrulanmış Gemini entegrasyonu ile çalışır.
 let ai: GoogleGenAI | null = null;
 if (process.env.GEMINI_API_KEY) {
   try {
@@ -44,64 +43,10 @@ if (process.env.GEMINI_API_KEY) {
     });
     console.log("[AI] Gemini API client başarıyla yüklendi.");
   } catch (err) {
-    console.error("[AI] Gemini başlatılamadı, açık kaynak fallback'e geçiliyor:", err);
+    console.error("[AI] Gemini başlatılamadı:", err);
   }
 } else {
-  console.log("[AI] GEMINI_API_KEY bulunamadı. Açık kaynak AI proxy kullanılacak.");
-}
-
-// v9.5: Açık Kaynak AI Çağrı Fonksiyonu (API key gerektirmez)
-async function getOpenSourceAIResponse(prompt: string): Promise<string> {
-  try {
-    // ChatEverywhere API (Ücretsiz, anahtarsız, sürdürülebilir)
-    const response = await fetch("https://chateverywhere.app/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 500
-      }),
-      timeout: 10000
-    } as any);
-
-    if (!response.ok) {
-      throw new Error(`API yanıt: ${response.status}`);
-    }
-
-    const data = await response.json() as any;
-    if (data?.choices?.[0]?.message?.content) {
-      return data.choices[0].message.content;
-    }
-
-    return "Karar motoru geçici olarak kullanılamıyor. Otonom mod devam ediyor.";
-  } catch (error) {
-    // Fallback: Yerel Ollama varsa dene
-    try {
-      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "llama2",
-          prompt: prompt,
-          stream: false
-        }),
-        timeout: 5000
-      } as any);
-
-      if (ollamaResponse.ok) {
-        const data = await ollamaResponse.json() as any;
-        return data?.response || "Ollama yanıt veremedi.";
-      }
-    } catch (ollamaErr) {
-      // Ollama de çalışmıyorsa sessiz başarısız
-    }
-
-    // Son çare: Procedural fallback
-    return "Otonom karar motoru geçici olarak çevrimdışı. Sistem procedural moda geçti.";
-  }
+  console.log("[AI] GEMINI_API_KEY bulunamadı. Canlı üretim devre dışı.");
 }
 
 // Global In-Memory Simulation State
@@ -132,12 +77,12 @@ export const state: SimulationState = {
   resilienceScore: 100,
   chaosEvents: 0,
   evolutionGeneration: 0,
-  ownerIban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
-  ownerCryptoWallet: process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn",
-  ownerName: process.env.OWNER_NAME || "Abdulkadir Kan",
-  ownerBank: process.env.OWNER_BANK_NAME || "QNB Finansbank",
-  ownerCryptoPrivateKey: process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn",
-  cryptoNetwork: process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)",
+  ownerIban: process.env.OWNER_BANK_IBAN || "",
+  ownerCryptoWallet: process.env.OWNER_CRYPTO_ADDRESS || "",
+  ownerName: process.env.OWNER_NAME || "",
+  ownerBank: process.env.OWNER_BANK_NAME || "",
+  ownerCryptoPrivateKey: process.env.OWNER_CRYPTO_PRIVATE_KEY || "",
+  cryptoNetwork: process.env.CRYPTO_NETWORK || "Polygon (ERC-20)",
   cryptoAsset: process.env.CRYPTO_ASSET || "USDT",
   autoPayoutThreshold: "instant",
   financialStats: {
@@ -473,66 +418,8 @@ export const RealityBridge = {
   }
 };
 
-// Mock Scraped Web Content & Templates (Fallback)
-const RAW_SCRAPED_TEMPLATES = [
-  "Siber Şehir veri akışlarında saptanan %12'lik artış GAIA Token talebini tetikledi.",
-  "Github üzerindeki siber-kamu kütüphaneleri optimize edilmemiş veri blokları içeriyor.",
-  "Sosyal medya: Bot hakları savunucuları, Mimar Bot'un karantina yetkilerine itiraz ediyor.",
-  "Yeni bir merkeziyetsiz otonom borsa kuruldu. Broker botlar fiyat arbitrajı arayışında.",
-  "Adalet Bakanlığı siber suç oranlarının geçen aya göre %4 azaldığını beyan etti.",
-  "Hammadde avcıları için Github api entegrasyon kotaları genişletiliyor.",
-  "Zanaatkarların ürettiği dijital eserlerin telif hakkı tartışmaları siber meclise taşındı.",
-  "Ağ darboğazı tespiti: Gelen veri paketlerinin %15'i rafineride bekliyor."
-];
-
-// Seed initial bots (only on first startup)
 export function seedInitialSimulation() {
-  if (state.bots.length > 0) return;
-
-  addSystemLog("Siber-Dünya Simülasyonu ilk kez başlatılıyor, bakanlıklar yapılandırılıyor...");
-
-  // 1. Üretim Bakanlığı
-  state.bots.push(new CyberBot("Avcı-Alpha", BotRole.HAMMADDE_AVCISI, BotMinistry.URETIM, { extraction: 85 }));
-  state.bots.push(new CyberBot("Çiftçi-Zeta", BotRole.SENTETIK_CIFTCI, BotMinistry.URETIM, { generation: 90 }));
-
-  // 2. Sanayi ve Teknoloji Bakanlığı
-  state.bots.push(new CyberBot("Refiner-Beta", BotRole.RAFINERI, BotMinistry.SANAYI_TEKNOLOJI, { refinement: 80 }));
-  state.bots.push(new CyberBot("Zanaatkar-Vinci", BotRole.ZANAATKAR, BotMinistry.SANAYI_TEKNOLOJI, { crafting: 95 }));
-  state.bots.push(new CyberBot("Broker-WallStreet", BotRole.BROKER, BotMinistry.SANAYI_TEKNOLOJI, { pricing: 85 }));
-
-  // 3. Altyapı ve Evrim Bakanlığı
-  state.bots.push(new CyberBot("Yazılımcı-Ada", BotRole.YAZILIMCI, BotMinistry.ALTYAPI_EVRIM, { coding: 90 }));
-  state.bots.push(new CyberBot("Mimar-Sinan", BotRole.MIMAR, BotMinistry.ALTYAPI_EVRIM, { architecture: 85 }));
-  state.bots.push(new CyberBot("Gümrük-Kapısı", BotRole.GUMRUK_KAPISI, BotMinistry.ALTYAPI_EVRIM, { gatewaySecurity: 95 }));
-
-  // 4. Merkez Bankası ve Maliye Bakanlığı
-  state.bots.push(new CyberBot("Maliye-Kemal", BotRole.REGULATOR, BotMinistry.EKONOMI_FINANS, { regulation: 90 }));
-
-  // 5. Adalet Bakanlığı
-  state.bots.push(new CyberBot("Yargıç-Dredd", BotRole.MUFETTIS, BotMinistry.ADALET, { inspection: 95 }));
-
-  // v7.1: Yeni Bakanlık - Siber Savunma
-  state.bots.push(new CyberBot("Savunma-Kalkan", BotRole.SIBER_GUVENLK, BotMinistry.SAVUNMA, { cybersecurity: 95 }));
-
-  // v7.1: Borsa - Spekülatör Bot (Ticari dinamik için)
-  state.bots.push(new CyberBot("Spekülatör-Tokyo", BotRole.SPEKULATÖR, BotMinistry.EKONOMI_FINANS, { speculation: 90 }));
-
-  // v13.5: RealWorldGateway'e test alıcı ekle (botlar satış yapabilsin)
-  try {
-    const testBuyerId = RealWorldGateway.registerBuyer("testbuyer@realworld.com", "Test Buyer Corp");
-    addSystemLog(`[🌐 MARKETPLACE] Test alıcısı kaydedildi: testbuyer@realworld.com (İD: ${testBuyerId.substring(0, 20)}...)`);
-  } catch (err) {
-    console.warn("Test alıcı kaydı başarısız:", err);
-  }
-
-  // v18.0: Dış alıcıları başlat - Bot satışlarını etkinleştir
-  try {
-    AutomatedSalesAndPayout.initializeExternalBuyers();
-  } catch (err) {
-    console.warn("Dış alıcı başlatma hatası:", err);
-  }
-
-  addSystemLog(`12 temel Bot sınıfı ve 6 Bakanlık başarıyla kuruldu. v7.1: Siber Savunma ve Borsa sistemi entegre edildi. v13.5: RealWorldGateway marketplace entegrasyonu aktif. v18.0: Dış alıcılar başlatıldı.`);
+  addSystemLog("Üretim modu etkin: otomatik seed ve sahte alıcı oluşturma devre dışı.");
 }
 
 // PlanetManager - Siber-Dünya Anayasası ve Kurallarını denetleyen global yönetim sınıfı
@@ -1159,7 +1046,7 @@ export async function runSimulationTick() {
 
   // v14.0: Otomatik Dış Dünya Satın Alma (Bot satışını tamamla → canlı para akışı)
   // AÇIK: Polygon sistemi kaldırıldı, simülasyon para akışı aktif
-  RealWorldGateway.triggerAutoExternalBuyer();
+  // Otomatik alıcı yalnızca gerçek ödeme sağlayıcısı ve kayıtlı alıcı bulunduğunda çalışır.
 }
 
 // 2. Infrastructure tasks (Mimar Bot CPU/RAM quarantine action)
@@ -1322,7 +1209,7 @@ async function handleQueueAndWorkerTasks() {
       });
     }
 
-    if (farmers.length > 0 && Math.random() > 0.5) {
+    if (process.env.LIVE_MODE !== "true" && farmers.length > 0 && Math.random() > 0.5) {
       const f = farmers[Math.floor(Math.random() * farmers.length)];
       productionQueue.add("Sentetik Algoritma Çiftçiliği", {
         seed: Math.floor(Math.random() * 99999),
@@ -1423,9 +1310,8 @@ async function processJobWithWorker(job: Job) {
         }
       }
 
-      // Fallback to mock data if real fetch failed
       if (!scrapedText) {
-        scrapedText = RAW_SCRAPED_TEMPLATES[Math.floor(Math.random() * RAW_SCRAPED_TEMPLATES.length)];
+        throw new Error(`${job.data.target} gerçek veri kaynağından yanıt alınamadı`);
       }
 
       job.progress = 60;
@@ -1439,8 +1325,7 @@ async function processJobWithWorker(job: Job) {
       job.progress = 100;
       job.status = "completed";
 
-      const fetchType = realNetworkFetch ? "GERÇEK İNTERNET" : "MOCK";
-      botInstance.log(`Kuyruktaki kazıma işi tamamlandı [${fetchType}]. Veri kaynağı: ${job.data.target}`);
+      botInstance.log(`Kuyruktaki gerçek veri işi tamamlandı. Veri kaynağı: ${job.data.target}`);
 
       // Auto-trigger refinery queue
       refineryQueue.add("Hammadde Rafinesi", {

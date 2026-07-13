@@ -4,6 +4,7 @@ import { BankTransferNode } from "./BankTransferNode.js";
 import { AdminPanel } from "./AdminPanel.js";
 import { addSystemLog } from "./simulation.js";
 import crypto from "crypto";
+import { PolygonValidator } from "./PolygonValidator.js";
 
 /**
  * v11.0: RealWorldGateway
@@ -190,19 +191,23 @@ export class RealWorldGateway {
    * v11.0: Ödemeyi doğrula ve veri teslim et
    * Gerçek para onaylandığında indirme linkini ver
    */
-  static verifyAndDeliverProduct(
+  static async verifyAndDeliverProduct(
     transactionId: string,
-    proof: string // İşlem hash veya dekont
-  ): { downloadToken: string; productInfo: any } {
+    proof: string
+  ): Promise<{ downloadToken: string; productInfo: any }> {
     const tx = this.transactions.find(t => t.id === transactionId);
     
     if (!tx) {
       throw new Error("İşlem bulunamadı");
     }
 
-    // Simüle ödeme doğrulama
-    if (!proof || proof.length < 20) {
-      throw new Error("Geçersiz ödeme kanıtı");
+    if (tx.paymentMethod !== "USDT_TRC20") {
+      throw new Error("Banka dekontları otomatik doğrulanamaz; admin onayı gerekir");
+    }
+
+    const validation = await PolygonValidator.validateTransaction(proof, tx.amount, "unknown");
+    if (!validation.valid) {
+      throw new Error(validation.error || "Blockchain ödemesi doğrulanamadı");
     }
 
     // Ödemeyi onayla
@@ -309,6 +314,7 @@ export class RealWorldGateway {
   static lastAutoBuyerTime = 0;
 
   static triggerAutoExternalBuyer() {
+    if (process.env.LIVE_EXTERNAL_BUYERS !== "true") return;
     const now = Date.now();
 
     // Ortalama 8-15 saniye aralığında satın alma işlemi tetikle
@@ -364,18 +370,37 @@ export class RealWorldGateway {
         `\n[🤖 OTOBOT SATIŞ] "${product.title}" | ${buyAmount} USDT | Buyer: ${autoEmail}`
       );
 
-      // BANKA TRANSFERI DEVRE DIŞI - Para havuzda tutulacak
+      // GERÇEK PARA TRANSFERI - CANLI
       const amountTRY = buyAmount * 30;
       const txId = `sale-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 
-      // Para havuza ekle (HAVUZ TUTMA)
+      // Para havuza ekle
       AdminPanel.addToWalletPool(buyAmount, amountTRY, `Otobot Satış: ${product.title}`, txId).catch(err => {
         console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
       });
 
-      addSystemLog(
-        `[✅ HAVUZ] ${product.title} - $${buyAmount.toFixed(2)} havuza eklendi`
-      );
+      // GERÇEK BANKA TRANSFERI BAŞLAT
+      const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
+      BankTransferNode.processRealTransfer(
+        txId,
+        buyAmount,
+        amountTRY,
+        bankIban,
+        autoEmail,
+        product.title
+      ).then(result => {
+        if (result.success) {
+          addSystemLog(
+            `[🏦 TRANSFER BAŞLADI] ${product.title} - TRN: ${result.transferId} | $${buyAmount.toFixed(2)}`
+          );
+        }
+      }).catch(err => {
+        console.error(`[❌ TRANSFER HATASI] ${err.message}`);
+      });
+
+      // Payout tetikle
+      const { PayoutManager } = require("./PayoutManager.js");
+      PayoutManager.triggerCryptoPayout(buyAmount);
     }
 
     this.lastAutoBuyerTime = now;

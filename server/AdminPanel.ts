@@ -9,6 +9,7 @@
 import { addSystemLog } from "./simulation.js";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
+import { ethers } from "ethers";
 
 const prisma = new PrismaClient();
 
@@ -349,18 +350,28 @@ export class AdminPanel {
         throw new Error("OWNER_CRYPTO_PRIVATE_KEY eksik - Transfer başarısız");
       }
 
-      // TODO: Gerçek ethers.js/web3.js USDT transferi burada yapılacak
-      // Şimdilik mock olarak başarılı kabul et
-      const mockTxHash = `0x${crypto.randomBytes(32).toString("hex")}`;
+      const rpcUrl = process.env.POLYGON_RPC_URL;
+      if (!rpcUrl) throw new Error("POLYGON_RPC_URL eksik - Transfer başarısız");
+
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const wallet = new ethers.Wallet(privateKey, provider);
+      const token = new ethers.Contract(
+        process.env.POLYGON_USDT_CONTRACT || "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+        ["function transfer(address to, uint256 amount) returns (bool)", "function decimals() view returns (uint8)"],
+        wallet
+      );
+      const decimals = await token.decimals();
+      const tx = await token.transfer(walletAddress, ethers.parseUnits(amount.toFixed(6), decimals));
+      await tx.wait(1);
 
       transfer.status = "success";
-      transfer.txHash = mockTxHash;
+      transfer.txHash = tx.hash;
 
-      console.log(`   ✅ İşlem Gönderildi`);
-      console.log(`   TX Hash: ${mockTxHash.substring(0, 20)}...\n`);
+      console.log(`   ✅ İşlem Onaylandı`);
+      console.log(`   TX Hash: ${tx.hash.substring(0, 20)}...\\n`);
 
       addSystemLog(
-        `[✅ USDT GÖNDERILDI] TID: ${transferId} | ${amount.toFixed(2)} USDT | TX: ${mockTxHash.substring(0, 20)}...`
+        `[✅ USDT GÖNDERİLDİ] TID: ${transferId} | ${amount.toFixed(2)} USDT | TX: ${tx.hash.substring(0, 20)}...`
       );
 
     } catch (error: any) {

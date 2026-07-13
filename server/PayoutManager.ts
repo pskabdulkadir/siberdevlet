@@ -25,15 +25,10 @@ export class PayoutManager {
     amountUSD: number,
     destinationWallet?: string
   ): Promise<{ success: boolean; msg: string }> {
-    const bankIBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
-    
-    addSystemLog(`[💰 ÖDEME BİLGİSİ] ${amountUSD.toFixed(2)} USD`);
-    addSystemLog(`   Banka: IBAN ${bankIBAN}`);
-    addSystemLog(`   Durum: Müşteriye ödeme bilgisi gönderildi`);
+    if (!Number.isFinite(amountUSD) || amountUSD <= 0) {
+      throw new Error("Geçerli bir payout tutarı gerekli");
+    }
 
-    return {
-      success: true,
-      msg: `Ödeme bilgisi gönderildi: IBAN ${bankIBAN}`
-    };
+    throw new Error("PayoutManager yalnızca gerçek transfer sağlayıcısı üzerinden çalışır; AdminPanel manuel transferini kullanın");
   }
 }

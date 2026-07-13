@@ -119,9 +119,7 @@ export class BankTransferNode {
       const walletAddress = process.env.OWNER_CRYPTO_ADDRESS;
 
       if (!privateKey || !walletAddress) {
-        console.warn(`[⚠️ USDT] Private key veya wallet adresi eksik - mock transfer`);
-        addSystemLog(`[⚠️ USDT MOCK] TRN: ${transferId} | ${amountUSD.toFixed(2)} USDT (credentials eksik)`);
-        return;
+        throw new Error("OWNER_CRYPTO_PRIVATE_KEY ve OWNER_CRYPTO_ADDRESS zorunludur");
       }
 
       // USDT TRC-20 kontrat adresi (Tron network)

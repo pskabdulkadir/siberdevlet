@@ -106,11 +106,8 @@ export class AutomationManager {
         `   Durum: ${result.msg}\n`
       );
     } catch (error: any) {
-      console.log(
-        `\n⚠️ Transfer simüle edildi (Stripe yapılandırması kontrol et).\n` +
-        `   Tutar: +${amount.toFixed(2)} USD\n` +
-        `   Hata: ${error.message}\n`
-      );
+      console.error(`[❌ BANKA PAYOUT] Gerçek transfer başlatılamadı: ${error.message}`);
+      addSystemLog(`[❌ BANKA PAYOUT] Gerçek transfer başlatılamadı: ${error.message}`);
     }
 
     console.log(`Zaman: ${new Date().toLocaleString("tr-TR")}\n`);
@@ -141,11 +138,8 @@ export class AutomationManager {
       );
       console.log(`📊 Polygon İşlem: https://polygonscan.com/tx/${result.txHash}`);
     } catch (error: any) {
-      console.log(`\n⚠️ Transfer simüle edildi (Polygon yapılandırması kontrol et).\n`);
-      console.log(
-        `   Tutar: +${amount.toFixed(2)} USDT\n` +
-        `   Hata: ${error.message}\n`
-      );
+      console.error(`[❌ KRİPTO PAYOUT] Gerçek transfer başlatılamadı: ${error.message}`);
+      addSystemLog(`[❌ KRİPTO PAYOUT] Gerçek transfer başlatılamadı: ${error.message}`);
     }
 
     console.log(`⏱️ Zaman: ${new Date().toLocaleString("tr-TR")}\n`);

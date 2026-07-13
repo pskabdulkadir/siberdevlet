@@ -26,9 +26,9 @@ function initializeAutonomousEnvironment() {
 
   // v20.0: KURUCU BİLGİLERİ - GERÇEK USDT TRC-20 + QNB FINANSBANK API
   process.env.OWNER_NAME = process.env.OWNER_NAME || "Abdulkadir Kan";
-  process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
+  process.env.OWNER_BANK_IBAN = process.env.OWNER_BANK_IBAN;
   process.env.OWNER_BANK_NAME = process.env.OWNER_BANK_NAME || "QNB Finansbank";
-  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn";
+  process.env.OWNER_CRYPTO_ADDRESS = process.env.OWNER_CRYPTO_ADDRESS;
   process.env.OWNER_CRYPTO_PRIVATE_KEY = process.env.OWNER_CRYPTO_PRIVATE_KEY || "";
   process.env.TRON_RPC_URL = process.env.TRON_RPC_URL || "https://api.trongrid.io/jsonrpc";
 
@@ -94,7 +94,7 @@ function initializeAutonomousEnvironment() {
   );
   console.log(`✅ Marketplace: Dış Alıcılara Açıldı`);
   console.log(`✅ Satış Yöntemi: Banka Transferi (IBAN)`);
-  console.log(`✅ Hedef IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`);
+  console.log(`✅ Hedef IBAN: ${process.env.OWNER_BANK_IBAN}`);
   console.log(`✅ Hesap Sahibi: ${process.env.OWNER_NAME}`);
   console.log(
     `\n${" ".repeat(20)}💰 Gerçek Alıcılar Marketplace Üzerinden Satın Alabilir!\n` +
@@ -444,6 +444,13 @@ app.post("/api/marketplace/initiate-payment", express.json(), (req, res) => {
       return res.status(400).json({ error: "Eksik parametreler" });
     }
 
+    if (paymentMethod === "USDT_TRC20" && (!process.env.OWNER_CRYPTO_ADDRESS || !process.env.POLYGON_RPC_URL)) {
+      return res.status(503).json({ error: "USDT ödeme altyapısı yapılandırılmadı" });
+    }
+    if (paymentMethod === "BANK_TRANSFER" && !process.env.OWNER_BANK_IBAN) {
+      return res.status(503).json({ error: "Banka ödeme altyapısı yapılandırılmadı" });
+    }
+
     const transaction = RealWorldGateway.initiatePayment(buyerId, productId, paymentMethod);
 
     res.json({
@@ -453,11 +460,11 @@ app.post("/api/marketplace/initiate-payment", express.json(), (req, res) => {
       paymentMethod,
       paymentDetails: {
         usdt: {
-          address: process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn",
+          address: process.env.OWNER_CRYPTO_ADDRESS,
           network: "TRC-20 (TRON Network)"
         },
         bank: {
-          iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
+          iban: process.env.OWNER_BANK_IBAN,
           name: process.env.OWNER_NAME || "Abdulkadir Kan",
           bank: "QNB Finansbank"
         }
@@ -470,14 +477,14 @@ app.post("/api/marketplace/initiate-payment", express.json(), (req, res) => {
 });
 
 // Ödemeyi doğrula ve veri teslim et
-app.post("/api/marketplace/verify-payment", express.json(), (req, res) => {
+app.post("/api/marketplace/verify-payment", express.json(), async (req, res) => {
   try {
     const { transactionId, proof } = req.body; // proof = tx hash veya dekont
     if (!transactionId || !proof) {
       return res.status(400).json({ error: "İşlem ID ve kanıt gerekli" });
     }
 
-    const result = RealWorldGateway.verifyAndDeliverProduct(transactionId, proof);
+    const result = await RealWorldGateway.verifyAndDeliverProduct(transactionId, proof);
 
     res.json({
       success: true,
@@ -1267,12 +1274,12 @@ app.get("/api/automation-flow", (req, res) => {
       bankAccount: {
         owner: process.env.OWNER_NAME || "Abdulkadir Kan",
         bank: process.env.OWNER_BANK_NAME || "QNB Finansbank",
-        iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"
+        iban: process.env.OWNER_BANK_IBAN
       },
       cryptoWallet: {
         network: process.env.CRYPTO_NETWORK || "TRC-20 (TRON Network)",
         asset: process.env.CRYPTO_ASSET || "USDT",
-        address: process.env.OWNER_CRYPTO_ADDRESS || "TU8h8hnYA9i7SX1hQKLyZfFUY74oGd3yNn"
+        address: process.env.OWNER_CRYPTO_ADDRESS
       },
       payoutStatus: {
         lastPayoutTick: AutomationManager?.autoConfig?.lastPayoutTick || 0,
@@ -2248,7 +2255,7 @@ app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
         priceTRY: product.price * 30,
         buyer: email,
         bankDetails: {
-          iban: process.env.OWNER_BANK_IBAN || "TR320015700000000091775122",
+          iban: process.env.OWNER_BANK_IBAN,
           accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
           bankName: process.env.OWNER_BANK || "Ziraat Bankası"
         },

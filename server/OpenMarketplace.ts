@@ -298,7 +298,7 @@ export class OpenMarketplace {
       `[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - $${order.amountUSD.toFixed(2)} - Ürün: ${product?.title}`
     );
 
-    // Para havuza ekle (HAVUZ TUTMA)
+    // Para havuza ekle
     AdminPanel.addToWalletPool(
       order.amountUSD,
       order.amountTRY,
@@ -306,6 +306,24 @@ export class OpenMarketplace {
       orderId
     ).catch(err => {
       console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+    });
+
+    // GERÇEK BANKA TRANSFERI BAŞLAT
+    BankTransferNode.processRealTransfer(
+      orderId,
+      order.amountUSD,
+      order.amountTRY,
+      order.bankDetails.iban,
+      order.buyerEmail,
+      product?.title || "Bilinmeyen Ürün"
+    ).then(result => {
+      if (result.success) {
+        addSystemLog(
+          `[🏦 GERÇEK TRANSFER] Order: ${orderId} - Marketplace Transfer ID: ${result.transferId}`
+        );
+      }
+    }).catch(err => {
+      addSystemLog(`[❌ TRANSFER HATASI] Order: ${orderId} - ${err.message}`);
     });
 
     return true;

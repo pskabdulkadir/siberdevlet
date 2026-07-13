@@ -30,49 +30,14 @@ export class AutomatedSalesAndPayout {
   private static totalCycleSales = 0; // Döngüdeki satış sayısı
   private static pendingPayoutAmount = 0; // Çekilmeyi bekleyen tutar
 
-  // GERÇEK DIŞ ALICILAR - Bu alıcılar gerçek USDT ödeyecek
-  private static readonly EXTERNAL_BUYERS = [
-    {
-      id: "buyer-realworld-ai-corp",
-      email: "purchases@realworld-ai.com",
-      company: "RealWorld AI Corp",
-      budget: 10000,
-      categories: ["CodeModule", "Report", "DataSet"],
-      purchaseProbability: 0.65 // %65 satın al (yükseltildi)
-    },
-    {
-      id: "buyer-crypto-traders",
-      email: "data@crypto-traders.io",
-      company: "Crypto Traders Inc",
-      budget: 8000,
-      categories: ["Report", "DataSet"],
-      purchaseProbability: 0.60 // %60 satın al
-    },
-    {
-      id: "buyer-ml-labs",
-      email: "research@ml-labs.org",
-      company: "ML Research Labs",
-      budget: 12000,
-      categories: ["CodeModule", "AIModel"],
-      purchaseProbability: 0.70 // %70 satın al
-    },
-    {
-      id: "buyer-opensourcevn",
-      email: "team@opensource.vn",
-      company: "Open Source Vietnam",
-      budget: 5000,
-      categories: ["CodeModule"],
-      purchaseProbability: 0.55 // %55 satın al
-    },
-    {
-      id: "buyer-web3-startups",
-      email: "tech@web3startups.io",
-      company: "Web3 Startups Collective",
-      budget: 15000,
-      categories: ["CodeModule", "AIModel", "Report"],
-      purchaseProbability: 0.75 // %75 satın al (en yüksek)
-    }
-  ];
+  private static readonly EXTERNAL_BUYERS: Array<{
+    id: string;
+    email: string;
+    company: string;
+    budget: number;
+    categories: string[];
+    purchaseProbability: number;
+  }> = [];
 
   // Yapılandırma - GERÇEK LIVE SETTINGS
   private static config: AutoSaleConfig = {
@@ -87,12 +52,7 @@ export class AutomatedSalesAndPayout {
    * Dış alıcıları sistem başlarken kaydet
    */
   static initializeExternalBuyers() {
-    for (const buyerData of this.EXTERNAL_BUYERS) {
-      RealWorldGateway.registerBuyer(buyerData.email, buyerData.company);
-    }
-    addSystemLog(
-      `[🌍 DIS-SATIS] ${this.EXTERNAL_BUYERS.length} dış alıcı sisteme kaydedildi`
-    );
+    addSystemLog("[🌍 DIŞ-SATIŞ] Gerçek alıcı kaydı bekleniyor; sahte alıcı oluşturulmadı.");
   }
 
   /**
@@ -113,11 +73,16 @@ export class AutomatedSalesAndPayout {
     );
 
     if (unsoldAssets.length === 0) {
-      addSystemLog(`[⚠️ SATIS] Satılacak ürün yok. Yeni bot ürünleri üretiliyor...`);
+      addSystemLog(`[⚠️ SATIŞ] Satılacak ürün yok.`);
       return;
     }
 
-    // GERÇEK ALICI TABA - Her alıcı kendi satın alma ihtimaline göre hareket et
+    if (this.EXTERNAL_BUYERS.length === 0) {
+      addSystemLog(`[ℹ️ SATIŞ] Gerçek alıcı entegrasyonu yapılandırılmadı.`);
+      return;
+    }
+
+    // Gerçek alıcı kaynağından gelen alıcılar üzerinden satış yap
     for (const buyerData of this.EXTERNAL_BUYERS) {
       // Alıcının satın alma olasılığını kontrol et
       if (Math.random() > buyerData.purchaseProbability) {

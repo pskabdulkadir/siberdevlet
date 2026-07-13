@@ -97,6 +97,7 @@ export class MarketingManager {
    * Her 1000 TICK'te pazarlamacı botlar devreye giriyor
    */
   static executeMarketingCycle(currentTick: number) {
+    if (process.env.LIVE_MARKETING_READY !== "true") return;
     if (currentTick - this.lastMarketingRun < this.MARKETING_INTERVAL) {
       return;
     }

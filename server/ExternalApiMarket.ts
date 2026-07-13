@@ -42,44 +42,7 @@ export interface ExternalSale {
 export class ExternalApiMarket {
   // v13.6: BOT-TO-BOT OTONOM ALICILAR
   // Dış dünya yazılımcı botları - otomatik veri satın alıyor
-  static botBuyers: BotBuyer[] = [
-    {
-      id: "bot-claude-ml",
-      name: "Claude ML Research Bot",
-      type: "AI_Model",
-      budget_usdt: 500,
-      preference: ["AITraining", "CodeModule", "ReportAnalysis"],
-      walletAddress: "0x1111111111111111111111111111111111111111",
-      trustScore: 98
-    },
-    {
-      id: "bot-gpt4-data",
-      name: "GPT-4 Data Collector Bot",
-      type: "DataBot",
-      budget_usdt: 300,
-      preference: ["RefinedData", "ReportAnalysis"],
-      walletAddress: "0x2222222222222222222222222222222222222222",
-      trustScore: 96
-    },
-    {
-      id: "bot-gemini-research",
-      name: "Gemini Research Bot",
-      type: "ResearchBot",
-      budget_usdt: 400,
-      preference: ["AITraining", "CodeModule"],
-      walletAddress: "0x3333333333333333333333333333333333333333",
-      trustScore: 95
-    },
-    {
-      id: "bot-code-analyzer",
-      name: "Code Analyzer Bot",
-      type: "CodeBot",
-      budget_usdt: 200,
-      preference: ["CodeModule"],
-      walletAddress: "0x4444444444444444444444444444444444444444",
-      trustScore: 92
-    }
-  ];
+  static botBuyers: BotBuyer[] = [];
 
   static marketData: DataProduct[] = [];
   static salesHistory: ExternalSale[] = [];

@@ -10,6 +10,12 @@ services:
       # ⚠️ Boşta bırakılabilir - Sistem otonom kurulum yapar
       - key: PORT
         value: "3000"
+      - key: LIVE_MODE
+        value: "true"
+      - key: LIVE_EXTERNAL_BUYERS
+        value: "false"
+      - key: LIVE_MARKETING_READY
+        value: "false"
       # v21.0: SQLite Database - Kalıcı depolama
       - key: DATABASE_URL
         value: "file:/var/data/wallet.db"
@@ -20,7 +26,9 @@ services:
       - key: POLYGON_RPC_URL
         value: "https://polygon-rpc.com"
       - key: OWNER_CRYPTO_ADDRESS
-        value: "0xDe0591C5a00Ef61cFA4b5b6b6584B9C979f44C30"
+        sync: false
+      - key: POLYGON_USDT_CONTRACT
+        value: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
       - key: OWNER_CRYPTO_PRIVATE_KEY
         sync: false
       # Açık kaynak AI fallback
