@@ -88,9 +88,9 @@ router.get("/api/admin/dashboard", (req, res) => {
 
 /**
  * GET /api/admin/wallet-pool
- * Havuz bilgileri
+ * Havuz bilgileri - Hafızadan doğrudan getir
  */
-router.get("/api/admin/wallet-pool", async (req, res) => {
+router.get("/api/admin/wallet-pool", (req, res) => {
   const sessionId = req.query.sessionId as string;
 
   if (!sessionId || !AdminPanel.verifySession(sessionId)) {
@@ -100,12 +100,11 @@ router.get("/api/admin/wallet-pool", async (req, res) => {
     });
   }
 
-  // DB'den en güncel veriyi yükle (failsafe)
-  await AdminPanel.loadWalletPoolFromDB().catch(err => {
-    console.error(`[⚠️ RELOAD HATASI] ${err.message}`);
-  });
-
+  // Hafızadan doğrudan getir - DB tablo sorunu yüzünden
   const poolStats = AdminPanel.getPoolStats();
+
+  console.log(`[📊 HAVUZ QUERY] USD: $${poolStats.totalUSD.toFixed(2)} | TRY: ₺${poolStats.totalTRY.toFixed(2)} | İşlem: ${poolStats.totalTransactions}`);
+
   res.json({
     success: true,
     pool: poolStats

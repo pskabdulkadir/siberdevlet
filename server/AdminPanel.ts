@@ -184,43 +184,7 @@ export class AdminPanel {
     orderId: string
   ): Promise<void> {
     try {
-      // DB'ye işlemi kayıt et
-      await prisma.walletTransaction.create({
-        data: {
-          orderId,
-          amount,
-          amountTRY,
-          source,
-          status: "pooled",
-          timestamp: BigInt(Date.now())
-        }
-      });
-
-      // DB'deki havuzu güncelle
-      await prisma.walletPool.upsert({
-        where: { id: "singleton" },
-        create: {
-          id: "singleton",
-          totalUSD: amount,
-          totalTRY: amountTRY,
-          totalTransactions: 1,
-          lastUpdate: BigInt(Date.now())
-        },
-        update: {
-          totalUSD: {
-            increment: amount
-          },
-          totalTRY: {
-            increment: amountTRY
-          },
-          totalTransactions: {
-            increment: 1
-          },
-          lastUpdate: BigInt(Date.now())
-        }
-      });
-
-      // Memory de de tut (hızlı erişim için)
+      // HER ZAMAN hafızaya yaz - bu kritik
       const transaction = {
         id: orderId,
         amount,
@@ -234,18 +198,54 @@ export class AdminPanel {
       this.walletPool.totalTransactions += 1;
       this.walletPool.lastUpdate = Date.now();
 
-      console.log(`\n💰 HAVUZA EKLENDİ (DB'DE KAYITLI)`);
+      console.log(`\n💰 HAVUZA EKLENDİ`);
       console.log(`   Tutar: ${amount.toFixed(2)} USD = ₺${amountTRY.toFixed(2)}`);
       console.log(`   Kaynak: ${source}`);
       console.log(`   Havuz Toplam: ${this.walletPool.totalUSD.toFixed(2)} USD`);
-      console.log(`   Status: ✅ Kalıcı olarak DB'ye kaydedildi\n`);
+      console.log(`   Status: ✅ Hafızaya kaydedildi\n`);
 
       addSystemLog(
-        `[💰 HAVUZA TOPLA] ${amount.toFixed(2)} USD | Havuz: ${this.walletPool.totalUSD.toFixed(2)} USD | DB: ✅ Kaydedildi`
+        `[💰 HAVUZA TOPLA] ${amount.toFixed(2)} USD | Havuz: ${this.walletPool.totalUSD.toFixed(2)} USD`
       );
+
+      // DB'ye yazma denemesi - başarısız olursa hafızadaki veri yine de var
+      try {
+        await prisma.walletTransaction.create({
+          data: {
+            orderId,
+            amount,
+            amountTRY,
+            source,
+            status: "pooled",
+            timestamp: BigInt(Date.now())
+          }
+        });
+
+        await prisma.walletPool.upsert({
+          where: { id: "singleton" },
+          create: {
+            id: "singleton",
+            totalUSD: amount,
+            totalTRY: amountTRY,
+            totalTransactions: 1,
+            lastUpdate: BigInt(Date.now())
+          },
+          update: {
+            totalUSD: { increment: amount },
+            totalTRY: { increment: amountTRY },
+            totalTransactions: { increment: 1 },
+            lastUpdate: BigInt(Date.now())
+          }
+        });
+
+        console.log(`   ✅ DB'ye de kaydedildi`);
+      } catch (dbError: any) {
+        console.log(`   ⚠️ DB kayıt hatası (hafızada veri korundu): ${dbError.message}`);
+      }
+
     } catch (error: any) {
-      console.error(`[❌ HAVUZ KAYIT HATASI] ${error.message}`);
-      addSystemLog(`[❌ HAVUZ KAYIT HATASI] ${error.message}`);
+      console.error(`[❌ HAVUZ HATASI] ${error.message}`);
+      addSystemLog(`[❌ HAVUZ HATASI] ${error.message}`);
     }
   }
 
