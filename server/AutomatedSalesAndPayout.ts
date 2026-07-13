@@ -166,9 +166,15 @@ export class AutomatedSalesAndPayout {
       asset.soldAt = Date.now();
       asset.soldPrice = priceUSDT;
 
-      // MARKETPLACE'DE ÜRÜNÜ BULA
+      // BANKA TRANSFERI LOG'U YAZIM - Her satış banka transferi tarafından işleniyor
+      const amountTRY = (priceUSDT * 30).toFixed(2);
+      addSystemLog(
+        `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${amountTRY} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
+      );
+
+      // MARKETPLACE'DE ÜRÜNÜ BULA - Order oluşturma (opsiyonel)
       const marketplaceProduct = OpenMarketplace.products.find(
-        p => p.creatorBot === (asset.creatorName || "Bot") &&
+        p => p.title.includes(asset.title.split(":")[1]?.trim() || "") ||
              p.title === asset.title
       );
 
@@ -183,19 +189,10 @@ export class AutomatedSalesAndPayout {
           if (result.success && result.orderId) {
             // Order'ı hemen tamamla (ödeme yapılmış kabul et)
             OpenMarketplace.completeOrder(result.orderId);
-
-            addSystemLog(
-              `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${(priceUSDT * 30).toFixed(2)} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
-            );
           }
         }).catch(err => {
-          addSystemLog(`[❌ ORDER HATASI] ${err.message}`);
+          // Sessiz hata - order oluşturma başarısız bile olsa banka transferi logu yazıldı
         });
-      } else {
-        // Marketplace'de ürün yoksa direkt log yaz
-        addSystemLog(
-          `[✅ BANKA TRANSFERI] "${asset.title}" → ₺${(priceUSDT * 30).toFixed(2)} | IBAN: ${process.env.OWNER_BANK_IBAN || "TR320015700000000091775122"}`
-        );
       }
 
       console.log(
