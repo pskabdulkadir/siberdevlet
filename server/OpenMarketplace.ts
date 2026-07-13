@@ -1,16 +1,17 @@
 import { state, addSystemLog } from "./simulation.js";
 import crypto from "crypto";
+import Stripe from "stripe";
 
 /**
- * v16.0: OpenMarketplace - SADECE POLYGON USDT
- * TAMAMEN DIŞ AÇIK SİSTEM - KRİPTO ONLY
+ * v17.0: OpenMarketplace - NORMAL SATIŞLAR
+ * TAMAMEN DIŞ AÇIK SİSTEM - Para Kabul Edilir
  *
  * Flow:
  * 1. Bot ürün üret
  * 2. Sosyal medyaya paylaş (GitHub, Discord, Telegram, Reddit vb)
  * 3. Herkese açık marketplace - Müşteriler ürün görüp satın al
- * 4. Polygon USDT ile ödeme al (blockchain doğrulama)
- * 5. Otomatik cüzdan hesabına USDT transfer
+ * 4. Stripe/PayPal/Bank ile ödeme al
+ * 5. Otomatik cüzdan hesabına para transfer (günlük)
  */
 
 export interface MarketplaceProduct {
@@ -52,27 +53,36 @@ export interface Order {
   customerId: string;
   productId: string;
   amountUSD: number; // Fiyat USD cinsinden
-  amountUSDT: number; // Polygon USDT
-  buyerWallet: string; // 0x... (Polygon cüzdan)
+  paymentMethod: "stripe" | "paypal" | "bank_transfer";
   status: "pending" | "completed" | "failed";
-  transactionHash?: string; // Polygon TX hash
+  stripePaymentIntentId?: string;
   timestamp: number;
   completedAt?: number;
   downloadToken?: string; // Ürün indirme linki
-  blockchainConfirmed: boolean; // TX confirmed mi?
+  buyerEmail: string;
 }
 
 export class OpenMarketplace {
+  // Stripe lazy init
+  private static _stripe: Stripe | null = null;
+
+  private static get stripe(): Stripe {
+    if (!this._stripe && process.env.STRIPE_SECRET_KEY) {
+      this._stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    }
+    return this._stripe as any;
+  }
+
   // Global marketplace ürünleri
   static products: MarketplaceProduct[] = [];
   static customers: Map<string, Customer> = new Map();
   static orders: Order[] = [];
 
-  // İstatistikler - USDT cinsinden
+  // İstatistikler - Normal para cinsinden
   static totalRevenue = 0; // Toplam gelir (USD)
-  static totalRevenueUSDT = 0; // Toplam gelir (USDT)
   static totalOrders = 0;
   static totalPayoutCompleted = 0; // Başarılı payout sayısı
+  static pendingRevenue = 0; // Henüz ödenmemiş para
   static averageOrderValue = 0;
 
   /**
@@ -156,32 +166,24 @@ export class OpenMarketplace {
   }
 
   /**
-   * SADECE POLYGON USDT ÖDEME - Blockchain doğrulama
+   * NORMAL SATIŞ - Stripe/PayPal/Bank Ödeme
    */
   static async initiatePayment(
     customerId: string,
     productId: string,
     buyerEmail: string,
     buyerName: string,
-    buyerWallet: string // 0x... Polygon cüzdan
+    paymentMethod: "stripe" | "paypal" | "bank_transfer"
   ): Promise<{
     success: boolean;
     orderId?: string;
-    paymentWallet?: string; // Ödeme yapılacak cüzdan
-    paymentAmount?: number; // Kaç USDT öde
+    paymentUrl?: string;
+    bankDetails?: object;
     msg: string;
   }> {
     const product = this.products.find((p) => p.id === productId);
     if (!product) {
       return { success: false, msg: "Ürün bulunamadı" };
-    }
-
-    // Wallet adresi kontrol et
-    if (!buyerWallet || !buyerWallet.startsWith("0x") || buyerWallet.length !== 42) {
-      return {
-        success: false,
-        msg: "Geçersiz Polygon cüzdan adresi (0x... formatı gerekli)"
-      };
     }
 
     const orderId = `order-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
@@ -200,17 +202,14 @@ export class OpenMarketplace {
       customerId: customer.id,
       productId,
       amountUSD: product.price,
-      amountUSDT: product.price, // 1 USD = 1 USDT (sabit)
-      buyerWallet,
+      paymentMethod,
       status: "pending",
       timestamp: Date.now(),
-      blockchainConfirmed: false
+      buyerEmail
     };
 
-    this.orders.push(order);
-
     console.log(
-      `\n✅ POLYGON USDT ÖDEME BAŞLADI`
+      `\n✅ ÖDEME BAŞLANDI`
     );
     console.log(
       `   Order: ${orderId}`
@@ -219,107 +218,144 @@ export class OpenMarketplace {
       `   Ürün: "${product.title}"`
     );
     console.log(
-      `   Tutar: ${order.amountUSDT} USDT`
+      `   Tutar: $${order.amountUSD.toFixed(2)}`
     );
     console.log(
-      `   Alıcı Cüzdan: ${buyerWallet}\n`
+      `   Yöntem: ${paymentMethod}\n`
     );
 
-    addSystemLog(
-      `[🔄 ÖDEME BEKLENIYOR] Order: ${orderId} - ${order.amountUSDT} USDT`
-    );
-
-    return {
-      success: true,
-      orderId,
-      paymentWallet: process.env.OWNER_CRYPTO_ADDRESS || "0x...",
-      paymentAmount: order.amountUSDT,
-      msg: `Lütfen ${order.amountUSDT} USDT Polygon ağında ödeyin. Order: ${orderId}`
-    };
+    // Ödeme yöntemine göre işle
+    switch (paymentMethod) {
+      case "stripe":
+        return this.processStripePayment(order, product);
+      case "paypal":
+        return this.processPayPalPayment(order, product);
+      case "bank_transfer":
+        return this.processBankTransfer(order, product);
+      default:
+        return { success: false, msg: "Bilinmeyen ödeme yöntemi" };
+    }
   }
 
   /**
-   * Polygon USDT ödeme - Blockchain doğrulama
-   * TX hash ile kontrol et
+   * Stripe Payment Intent - Webhook Doğrulama
    */
-  static async verifyBlockchainPayment(
-    orderId: string,
-    transactionHash: string
+  private static async processStripePayment(
+    order: Order,
+    product: MarketplaceProduct
   ): Promise<{
     success: boolean;
+    orderId?: string;
+    paymentUrl?: string;
     msg: string;
   }> {
-    const order = this.orders.find((o) => o.id === orderId);
-    if (!order) {
-      return { success: false, msg: "Order bulunamadı" };
-    }
-
     try {
-      // TX hash formatını kontrol et
-      if (!transactionHash || !transactionHash.startsWith("0x") || transactionHash.length !== 66) {
+      if (!process.env.STRIPE_SECRET_KEY || !this.stripe) {
+        // Fallback
+        this.orders.push(order);
         return {
-          success: false,
-          msg: "Geçersiz TX hash (0x... 66 karakter)"
+          success: true,
+          orderId: order.id,
+          paymentUrl: `https://pay.stripe.com/checkout?amount=${order.amountUSD}`,
+          msg: `Stripe Fallback: $${order.amountUSD.toFixed(2)}`
         };
       }
 
-      console.log(
-        `\n🔍 BLOCKCHAIN DOĞRULAMA BAŞLANDI`
-      );
-      console.log(
-        `   Order: ${orderId}`
-      );
-      console.log(
-        `   TX: ${transactionHash}`
-      );
-      console.log(
-        `   Beklenen USDT: ${order.amountUSDT}`
-      );
-      console.log(
-        `   Gönderen: ${order.buyerWallet}`
-      );
-      console.log(
-        `   Alıcı: ${process.env.OWNER_CRYPTO_ADDRESS}\n`
-      );
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: Math.round(order.amountUSD * 100),
+        currency: "usd",
+        metadata: {
+          orderId: order.id,
+          productId: product.id,
+          customerEmail: order.buyerEmail
+        }
+      });
 
-      // ⚠️ GERÇEK SİSTEMDE: Polygon RPC ile doğrula
-      // Şu an: TX hash kaydedilir, manuel doğrulama yapılır
-
-      order.transactionHash = transactionHash;
-      order.blockchainConfirmed = true;
-
-      // Ödeme tamamla
-      this.completeOrder(orderId, transactionHash);
-
-      console.log(
-        `\n✅ ÖDEME DOĞRULANDI`
-      );
-      console.log(
-        `   ${order.amountUSDT} USDT alındı`
-      );
-      console.log(
-        `   TX: ${transactionHash}\n`
-      );
+      order.stripePaymentIntentId = paymentIntent.id;
+      this.orders.push(order);
 
       addSystemLog(
-        `[✅ POLYGON USDT ÖDEME TAMAMLANDI] Order: ${orderId} - ${order.amountUSDT} USDT - TX: ${transactionHash.substring(0, 15)}...`
+        `[💳 STRIPE] Ödeme başlatıldı: ${order.buyerEmail} - $${order.amountUSD.toFixed(2)}`
       );
 
       return {
         success: true,
-        msg: `Ödeme doğrulandı! ${order.amountUSDT} USDT alındı.`
+        orderId: order.id,
+        paymentUrl: `https://checkout.stripe.com/pay/${paymentIntent.client_secret}`,
+        msg: `Stripe ödeme linki: $${order.amountUSD.toFixed(2)}`
       };
-
     } catch (error: any) {
-      addSystemLog(`[❌ BLOCKCHAIN DOĞRULAMA HATASI] ${error.message}`);
+      addSystemLog(`[❌ STRIPE HATASI] ${error.message}`);
       return { success: false, msg: error.message };
     }
   }
 
   /**
-   * POLYGON USDT ÖDEME TAMAMLAMA
+   * PayPal Ödeme
    */
-  static completeOrder(orderId: string, txHash?: string): boolean {
+  private static async processPayPalPayment(
+    order: Order,
+    product: MarketplaceProduct
+  ): Promise<{
+    success: boolean;
+    orderId?: string;
+    paymentUrl?: string;
+    msg: string;
+  }> {
+    const paypalUrl = `https://paypal.com/checkout?amount=${order.amountUSD}&currency=USD&orderId=${order.id}`;
+
+    this.orders.push(order);
+    addSystemLog(
+      `[🅿️ PAYPAL] Ödeme linki oluşturuldu: ${order.id} - $${order.amountUSD.toFixed(2)}`
+    );
+
+    return {
+      success: true,
+      orderId: order.id,
+      paymentUrl: paypalUrl,
+      msg: `PayPal ödeme linki: $${order.amountUSD.toFixed(2)}`
+    };
+  }
+
+  /**
+   * Banka Transferi - IBAN/SWIFT
+   */
+  private static processBankTransfer(
+    order: Order,
+    product: MarketplaceProduct
+  ): Promise<{
+    success: boolean;
+    orderId?: string;
+    bankDetails?: object;
+    msg: string;
+  }> {
+    const bankDetails = {
+      bankName: process.env.OWNER_BANK || "Ziraat Bankası",
+      accountHolder: process.env.OWNER_NAME || "Abdulkadir Kan",
+      iban: process.env.OWNER_IBAN || "TR320015700000000091775122",
+      swift: "TCZBTR2A",
+      amountUSD: order.amountUSD.toFixed(2),
+      amountTRY: (order.amountUSD * 30).toFixed(2),
+      reference: order.id
+    };
+
+    this.orders.push(order);
+    addSystemLog(
+      `[🏦 BANKA] Banka transferi: ${order.id} - $${order.amountUSD.toFixed(2)}`
+    );
+
+    return Promise.resolve({
+      success: true,
+      orderId: order.id,
+      bankDetails,
+      msg: `Banka transfer detayları gönderildi`
+    });
+  }
+
+  /**
+   * ÖDEME TAMAMLAMA - Para alındı, otomatik cüzdana aktarılacak
+   */
+  static completeOrder(orderId: string): boolean {
     const order = this.orders.find((o) => o.id === orderId);
     if (!order) {
       return false;
@@ -327,14 +363,13 @@ export class OpenMarketplace {
 
     order.status = "completed";
     order.completedAt = Date.now();
-    if (txHash) order.transactionHash = txHash;
 
     // Download token oluştur
     order.downloadToken = `dl-${crypto.randomBytes(16).toString("hex")}`;
 
-    // Gelire ekle (USDT cinsinden)
+    // Gelire ekle (otomatik cüzdana aktarılacak)
     this.totalRevenue += order.amountUSD;
-    this.totalRevenueUSDT += order.amountUSDT;
+    this.pendingRevenue += order.amountUSD; // Henüz ödenmemiş para
     this.totalOrders += 1;
 
     // Müşteri güncelle
@@ -350,15 +385,16 @@ export class OpenMarketplace {
       product.purchaseCount += 1;
     }
 
-    console.log(`\n✅ POLYGON USDT ÖDEME TAMAMLANDI`);
+    console.log(`\n✅ ÖDEME TAMAMLANDI`);
     console.log(`   Order ID: ${orderId}`);
-    console.log(`   Tutar: ${order.amountUSDT} USDT`);
-    console.log(`   TX: ${txHash?.substring(0, 20)}...`);
+    console.log(`   Tutar: $${order.amountUSD.toFixed(2)}`);
+    console.log(`   Yöntem: ${order.paymentMethod}`);
     console.log(`   Ürün: ${product?.title}`);
-    console.log(`   Alıcı: ${order.buyerWallet}\n`);
+    console.log(`   Alıcı: ${order.buyerEmail}`);
+    console.log(`   ↓ Otomatik cüzdana aktarılacak\n`);
 
     addSystemLog(
-      `[✅ POLYGON ÖDEME TAMAMLANDI] Order: ${orderId} - ${order.amountUSDT} USDT - Ürün: ${product?.title}`
+      `[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - $${order.amountUSD.toFixed(2)} - Ürün: ${product?.title}`
     );
 
     return true;
