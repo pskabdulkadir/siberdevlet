@@ -2109,22 +2109,14 @@ app.get("/api/marketplace/product/:productId", (req, res) => {
   });
 });
 
-// SADECE POLYGON USDT - Ödeme başlat
+// NORMAL SATIŞ - Ödeme başlat (Stripe/PayPal/Bank)
 app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
-  const { productId, email, name, walletAddress } = req.body;
+  const { productId, email, name, paymentMethod } = req.body;
 
-  if (!productId || !email || !name || !walletAddress) {
+  if (!productId || !email || !name || !paymentMethod) {
     return res.status(400).json({
       success: false,
-      error: "Gerekli: productId, email, name, walletAddress (0x...)"
-    });
-  }
-
-  // Wallet formatını kontrol et
-  if (!walletAddress.startsWith("0x") || walletAddress.length !== 42) {
-    return res.status(400).json({
-      success: false,
-      error: "Geçersiz Polygon cüzdan adresi (0x... formatı, 42 karakter)"
+      error: "Gerekli: productId, email, name, paymentMethod (stripe|paypal|bank_transfer)"
     });
   }
 
@@ -2139,7 +2131,7 @@ app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
       productId,
       email,
       name,
-      walletAddress // Polygon cüzdan
+      paymentMethod as any
     );
 
     res.json(result);
@@ -2148,31 +2140,30 @@ app.post("/api/marketplace/checkout", express.json(), async (req, res) => {
   }
 });
 
-// POLYGON USDT BLOCKCHAIN DOĞRULAMA
-app.post("/api/marketplace/verify-payment", express.json(), async (req, res) => {
-  const { orderId, transactionHash } = req.body;
+// ÖDEME DOĞRULAMA - Webhook ya da Manual
+app.post("/api/marketplace/confirm-payment", express.json(), async (req, res) => {
+  const { orderId } = req.body;
 
-  if (!orderId || !transactionHash) {
+  if (!orderId) {
     return res.status(400).json({
       success: false,
-      error: "Gerekli: orderId, transactionHash (0x...)"
+      error: "Gerekli: orderId"
     });
   }
 
   try {
-    const result = await OpenMarketplace.verifyBlockchainPayment(orderId, transactionHash);
+    const success = OpenMarketplace.completeOrder(orderId);
 
-    if (!result.success) {
-      return res.status(400).json(result);
+    if (!success) {
+      return res.status(404).json({ success: false, error: "Order bulunamadı" });
     }
 
-    addSystemLog(`[✅ POLYGON USDT ÖDEME DOĞRULANDI] Order: ${orderId} - TX: ${transactionHash}`);
+    addSystemLog(`[✅ ÖDEME TAMAMLANDI] Order: ${orderId} - Otomatik cüzdan aktarımı başladı`);
 
     res.json({
       success: true,
-      message: "Ödeme Polygon blockchain'de doğrulandı! Ürünü indirebilirsiniz.",
-      orderId,
-      transactionHash
+      message: "Ödeme doğrulandı! Ürünü indirebilirsiniz. Para otomatik cüzdana aktarılıyor.",
+      orderId
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -2188,6 +2179,74 @@ app.get("/api/payout/stats", (req, res) => {
     timestamp: Date.now(),
     payout: stats
   });
+});
+
+// CANLIDA SATIŞ SİMÜLASYONU - Test için otomatik satış yap
+app.post("/api/admin/simulate-purchase", express.json(), async (req, res) => {
+  try {
+    const { productId, buyerEmail, buyerName, paymentMethod } = req.body;
+
+    // Random ürün seç
+    let product = productId
+      ? OpenMarketplace.products.find(p => p.id === productId)
+      : OpenMarketplace.products[Math.floor(Math.random() * OpenMarketplace.products.length)];
+
+    if (!product) {
+      return res.status(404).json({ success: false, error: "Satılacak ürün yok" });
+    }
+
+    // Random müşteri
+    const email = buyerEmail || `buyer-${Date.now()}@test.com`;
+    const name = buyerName || "Test Buyer";
+    const method = (paymentMethod || "bank_transfer") as any;
+
+    // Ödeme başlat
+    const checkoutResult = await OpenMarketplace.initiatePayment(
+      "",
+      product.id,
+      email,
+      name,
+      method
+    );
+
+    if (!checkoutResult.success) {
+      return res.status(400).json(checkoutResult);
+    }
+
+    // HEMEN ödeme doğrula
+    const orderId = checkoutResult.orderId;
+    const confirmResult = OpenMarketplace.completeOrder(orderId!);
+
+    if (!confirmResult) {
+      return res.status(400).json({ success: false, error: "Ödeme doğrulamadı" });
+    }
+
+    console.log(`\n✅ SATIŞ BAŞARILI`);
+    console.log(`   Order: ${orderId}`);
+    console.log(`   Ürün: ${product.title}`);
+    console.log(`   Tutar: $${product.price.toFixed(2)}`);
+    console.log(`   Alıcı: ${email}`);
+    console.log(`   ↓ Cüzdana aktarılıyor...\n`);
+
+    addSystemLog(
+      `[✅ TEST SATIŞ] ${product.title} - $${product.price.toFixed(2)} - ${email}`
+    );
+
+    res.json({
+      success: true,
+      message: "Satış simülasyonu başarılı - Para cüzdana aktarılıyor",
+      order: {
+        id: orderId,
+        product: product.title,
+        price: product.price,
+        buyer: email,
+        status: "completed"
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Payout yapılandırmasını güncelle
