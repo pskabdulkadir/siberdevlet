@@ -192,6 +192,8 @@ import { BackupManager } from "./server/BackupManager.js";
 import { BotRole, BotMinistry, BotStatus } from "./src/types.js";
 import { RealWorldGateway } from "./server/RealWorldGateway.js";
 import { BankTransferNode } from "./server/BankTransferNode.js";
+import { AdminPanel } from "./server/AdminPanel.js";
+import AdminEndpoints from "./server/AdminEndpoints.js";
 import { AutomationManager } from "./server/AutomationManager.js";
 import { PolygonValidator } from "./server/PolygonValidator.js";
 import { ExternalApiMarket } from "./server/ExternalApiMarket.js";
@@ -2365,6 +2367,9 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+
+    // v21.0: ADMIN PANEL ENDPOINTS
+    app.use(AdminEndpoints);
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

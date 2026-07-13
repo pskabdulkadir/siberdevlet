@@ -3,6 +3,7 @@ import { PayoutManager } from "./PayoutManager.js";
 import { RealWorldGateway } from "./RealWorldGateway.js";
 import { OpenMarketplace } from "./OpenMarketplace.js";
 import { BankTransferNode } from "./BankTransferNode.js";
+import { AdminPanel } from "./AdminPanel.js";
 import { addSystemLog, state } from "./simulation.js";
 import crypto from "crypto";
 
@@ -167,27 +168,9 @@ export class AutomatedSalesAndPayout {
       asset.soldAt = Date.now();
       asset.soldPrice = priceUSDT;
 
-      // GERÇEK BANKA TRANSFERI - BankTransferNode'a gönder
-      const amountTRY = (priceUSDT * 30).toFixed(2);
-      const bankIban = process.env.OWNER_BANK_IBAN || "TR320015700000000091775122";
-
-      // Gerçek transfer başlat (asenkron)
-      BankTransferNode.processRealTransfer(
-        txId,
-        priceUSDT,
-        parseFloat(amountTRY),
-        bankIban,
-        buyerData.email,
-        asset.title
-      ).then(result => {
-        if (result.success) {
-          addSystemLog(
-            `[🏦 GERÇEK TRANSFER BAŞLADI] TRN: ${result.transferId} | "${asset.title}" | $${priceUSDT.toFixed(2)}`
-          );
-        }
-      }).catch(err => {
-        addSystemLog(`[❌ TRANSFER HATASI] ${err.message}`);
-      });
+      // v21.0: HAVUZA EKLE - Transfer YAPMA, admin manuel tetikleyecek
+      const amountTRY = priceUSDT * 30;
+      AdminPanel.addToWalletPool(priceUSDT, amountTRY, `Dış Satış: ${buyerData.company}`, txId);
 
       // MARKETPLACE'DE ÜRÜNÜ BULA - Order oluşturma (opsiyonel)
       const marketplaceProduct = OpenMarketplace.products.find(
