@@ -216,12 +216,19 @@ export class RealWorldGateway {
    */
   static async verifyAndDeliverProduct(
     transactionId: string,
-    proof: string
+    proof: string,
+    adminSessionId?: string
   ): Promise<{ downloadToken: string; productInfo: any }> {
     const tx = this.transactions.find(t => t.id === transactionId);
     
     if (!tx) {
       throw new Error("İşlem bulunamadı");
+    }
+
+    // Admin onayı için session kontrolü
+    if (adminSessionId) {
+      const { AdminPanel } = require("./AdminPanel.js");
+      if (!AdminPanel.verifySession(adminSessionId)) throw new Error("Geçersiz admin session.");
     }
 
     // v28.0: Otomatik doğrulama mantığı

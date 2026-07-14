@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Send, DollarSign, TrendingUp, Bitcoin } from 'lucide-react';
+import { LogOut, Send, DollarSign, TrendingUp, Bitcoin, CreditCard, Clock } from 'lucide-react';
 
 interface WalletPool {
   totalUSD: number;
@@ -17,6 +17,16 @@ interface Transfer {
   walletAddress?: string;
 }
 
+interface PendingTransaction {
+  id: string;
+  buyerEmail: string;
+  productTitle: string;
+  amount: number;
+  paymentMethod: 'BANK_TRANSFER' | 'USDT_POLYGON';
+  createdAt: number;
+  status: string;
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [sessionId] = useState(() => localStorage.getItem('adminSessionId') || '');
@@ -28,6 +38,10 @@ export function AdminDashboard() {
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState('');
   const [transferSuccess, setTransferSuccess] = useState('');
+  const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([]);
+  const [selectedTx, setSelectedTx] = useState<PendingTransaction | null>(null);
+  const [txProof, setTxProof] = useState('');
+  const [verificationError, setVerificationError] = useState('');
 
   // Session kontrol
   useEffect(() => {
@@ -37,6 +51,7 @@ export function AdminDashboard() {
     }
 
     loadDashboard();
+    loadPendingTransactions();
     const interval = setInterval(loadDashboard, 5000); // Her 5 saniyede güncelle
     return () => clearInterval(interval);
   }, [sessionId]);
@@ -59,6 +74,18 @@ export function AdminDashboard() {
       console.error('[❌ Dashboard] Yükleme hatası:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPendingTransactions = async () => {
+    try {
+      const response = await fetch(`/api/marketplace/pending-transactions?sessionId=${sessionId}`);
+      const data = await response.json();
+      if (data.success) {
+        setPendingTransactions(data.transactions);
+      }
+    } catch (err) {
+      console.error('Bekleyen işlemler yüklenemedi:', err);
     }
   };
 
@@ -120,6 +147,42 @@ export function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('adminSessionId');
     navigate('/admin/login');
+  };
+
+  const handleVerifyPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTx || !txProof) {
+      setVerificationError('Lütfen bir işlem seçin ve ödeme kanıtını girin.');
+      return;
+    }
+    setVerificationError('');
+    setTransferLoading(true);
+
+    try {
+      const response = await fetch('/api/marketplace/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactionId: selectedTx.id,
+          proof: txProof,
+          adminSessionId: sessionId
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTransferSuccess('Ödeme başarıyla doğrulandı ve ürün teslim edildi!');
+        setSelectedTx(null);
+        setTxProof('');
+        loadPendingTransactions(); // Listeyi yenile
+        loadDashboard(); // Havuzu yenile
+      } else {
+        setVerificationError(data.error || 'Doğrulama başarısız.');
+      }
+    } catch (err: any) {
+      setVerificationError(err.message || 'Bir hata oluştu.');
+    } finally {
+      setTransferLoading(false);
+    }
   };
 
   return (
@@ -189,6 +252,73 @@ export function AdminDashboard() {
               ⚠️ Havuzda henüz para yok. Satışlar gerçekleştikçe burada gösterilecek.
             </div>
           ) : null}
+
+          {/* Bekleyen Ödemeler (Gerçek Müşteri) */}
+          <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
+              Bekleyen Ödeme Onayları
+            </h2>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {pendingTransactions.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-500">Bekleyen ödeme onayı yok.</div>
+              ) : (
+                pendingTransactions.map(tx => (
+                  <div key={tx.id} className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTx?.id === tx.id ? 'bg-blue-900/50 border-blue-500' : 'bg-slate-900/50 border-slate-700 hover:border-slate-600'}`} onClick={() => setSelectedTx(tx)}>
+                    <div className="flex justify-between items-center">
+                      <div className="font-bold text-slate-200 text-sm">{tx.productTitle}</div>
+                      <div className="text-lg font-bold text-emerald-400">${tx.amount.toFixed(2)}</div>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">{tx.buyerEmail}</div>
+                    <div className="text-[10px] text-amber-400 font-mono mt-1">{tx.paymentMethod === 'USDT_POLYGON' ? 'Kripto (Polygon USDT)' : 'Banka Transferi'}</div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Onay Formu */}
+            {selectedTx && (
+              <form onSubmit={handleVerifyPayment} className="mt-4 pt-4 border-t border-slate-700 space-y-4">
+                <h3 className="text-sm font-bold text-white">Onay Formu: {selectedTx.productTitle}</h3>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Ödeme Kanıtı (Transaction Hash / Dekont No)
+                  </label>
+                  <input
+                    type="text"
+                    value={txProof}
+                    onChange={(e) => setTxProof(e.target.value)}
+                    placeholder={selectedTx.paymentMethod === 'USDT_POLYGON' ? '0x...' : 'Dekont Numarası'}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                {verificationError && (
+                  <div className="bg-red-900/20 border border-red-700 text-red-400 p-3 rounded-lg text-sm">
+                    {verificationError}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={transferLoading}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                  >
+                    {transferLoading ? 'Doğrulanıyor...' : '✅ Ödemeyi Doğrula ve Teslim Et'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTx(null)}
+                    className="bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                  >
+                    İptal
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
 
         </div>
 
