@@ -255,17 +255,35 @@ function broadcastStateThrottled() {
   }
   lastThrottledBroadcast = now;
 
-  // v8.1: Ultra-hafif payload - harita ve log verisi optimize
-  const payload = JSON.stringify({
-    type: "state_update",
-    t: Date.now(),
+  // v37.0: İki aşamalı veri akışı optimizasyonu
+  // 1. Aşama: Kritik ve hafif verileri her zaman gönder (500ms'de bir)
+  const lightPayload = JSON.stringify({
+    type: "light_update",
     tick: state.activeTicks,
     bots: state.bots.length,
     cpu: state.serverCpu.toFixed(1),
     ram: state.serverRam.toFixed(1),
     gaia: state.totalGAIA.toFixed(0),
-    inf: state.inflationRate.toFixed(1)
+    subsidyPool: state.subsidyPool.toFixed(0),
+    marketVolume: state.marketVolume.toFixed(0),
+    resilienceScore: state.resilienceScore,
+    chaosEvents: state.chaosEvents,
+    rateLimitRisk: state.rateLimitRisk,
+    evolutionGeneration: state.evolutionGeneration,
+    bankruptcyCount: state.bankruptcyCount,
+    logs: state.logs.slice(0, 20) // Sadece son 20 log
   });
+
+  // 2. Aşama: Ağır verileri (tüm bot listesi, varlıklar vb.) daha seyrek gönder (her 5 saniyede bir)
+  let heavyPayload: string | null = null;
+  if (state.activeTicks % 10 === 0) { // Her 10 tick'te bir (yaklaşık 20 saniye)
+    heavyPayload = JSON.stringify({
+      type: "heavy_update",
+      bots: state.bots.slice(0, 100).map(b => ({ id: b.id, name: b.name, role: b.role, balance: b.balance, status: b.status, posX: b.posX, posY: b.posY })), // Sadece ilk 100 botun temel bilgileri
+      assets: state.assets.slice(0, 20).map(a => ({ id: a.id, title: a.title, price: a.price, sold: a.sold })), // Sadece son 20 varlık
+      transactions: state.transactions.slice(0, 30) // Son 30 işlem
+    });
+  }
 
   // v8.1: Aggressive dead connection cleanup
   const deadConnections = [];
@@ -273,7 +291,8 @@ function broadcastStateThrottled() {
 
   wsClients.forEach((ws) => {
     if (ws.readyState === 1) { // WebSocket.OPEN
-      ws.send(payload, (err) => {
+      // Önce hafif veriyi gönder
+      ws.send(lightPayload, (err) => {
         if (err) {
           console.error("[WebSocket] Send error:", err);
           deadConnections.push(ws);
@@ -281,6 +300,10 @@ function broadcastStateThrottled() {
           sendCount++;
         }
       });
+      // Eğer varsa, ağır veriyi de gönder
+      if (heavyPayload) {
+        ws.send(heavyPayload);
+      }
     } else {
       deadConnections.push(ws);
     }
