@@ -2411,6 +2411,19 @@ async function startServer() {
     console.log(`[Server] Listening at http://localhost:${PORT}`);
     console.log(`[Server] WebSocket server aktif. WebSocket bağlantıları temizlenecek.`);
     console.log(`[Server] Uygulamaya açmak için tarayıcıda http://localhost:${PORT} adresi gidin`);
+
+    // v36.0: TAM OTOMASYONU OTOMATİK BAŞLAT
+    // Sunucu ayağa kalktıktan 10 saniye sonra "ONE-CLICK START" işlemini otomatik tetikle.
+    setTimeout(() => {
+      console.log("\n[v36.0] 🚀 TAM OTOMASYON OTOMATİK OLARAK BAŞLATILIYOR...");
+      fetch(`http://localhost:${PORT}/api/admin/start-full-automation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(res => res.json())
+      .then(data => console.log("[v36.0] Otomatik Başlatma Sonucu:", data.message))
+      .catch(err => console.error("[v36.0] Otomatik Başlatma Hatası:", err));
+    }, 10000); // 10 saniye bekleme süresi, tüm sistemin yüklenmesini garantiler.
   });
 }
 
