@@ -8,6 +8,7 @@
 
 import express from "express";
 import { AdminPanel } from "./AdminPanel.js";
+import { RealWorldGateway } from "./RealWorldGateway.js";
 
 const router = express.Router();
 
@@ -167,6 +168,35 @@ router.post("/api/admin/logout", express.json(), (req, res) => {
     success: true,
     message: "Logout başarılı"
   });
+});
+
+/**
+ * GET /api/marketplace/pending-transactions
+ * Gerçek müşterilerden gelen ve onayı bekleyen işlemleri listeler.
+ */
+router.get("/api/marketplace/pending-transactions", (req, res) => {
+  const sessionId = req.query.sessionId as string;
+
+  if (!sessionId || !AdminPanel.verifySession(sessionId)) {
+    return res.status(401).json({
+      success: false,
+      error: "Session geçersiz"
+    });
+  }
+
+  const pending = RealWorldGateway.transactions
+    .filter(t => t.status === "pending")
+    .map(t => {
+      const buyer = RealWorldGateway.buyers.get(t.buyerId);
+      const product = RealWorldGateway.marketplace.find(p => p.id === t.productId);
+      return {
+        ...t,
+        buyerEmail: buyer?.email || 'Bilinmiyor',
+        productTitle: product?.title || 'Bilinmeyen Ürün'
+      };
+    });
+
+  res.json({ success: true, transactions: pending });
 });
 
 export default router;
