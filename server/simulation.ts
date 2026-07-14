@@ -65,7 +65,7 @@ export const state: SimulationState = {
   logs: [],
   recycledBotCount: 0,
   activeTicks: 0,
-  autoPlay: false,
+  autoPlay: true, // v32.0: Sunucu başlar başlamaz otonom döngüyü otomatik başlat.
   activeProxy: "185.112.54.21",
   proxyRotations: 0,
   rateLimitRisk: 10,
