@@ -5,7 +5,6 @@ import { LogOut, Send, DollarSign, TrendingUp, Bitcoin } from 'lucide-react';
 interface WalletPool {
   totalUSD: number;
   totalTRY: number;
-  totalUSDT_Crypto?: number;
   totalTransactions: number;
 }
 
@@ -22,8 +21,7 @@ export function AdminDashboard() {
   const [sessionId] = useState(() => localStorage.getItem('adminSessionId') || '');
   const [pool, setPool] = useState<WalletPool | null>(null);
   const [loading, setLoading] = useState(true);
-  const [transferMethod, setTransferMethod] = useState<'bank' | 'crypto'>('bank');
-  const [cryptoWalletAddress, setCryptoWalletAddress] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState('');
@@ -68,13 +66,6 @@ export function AdminDashboard() {
     setTransferSuccess('');
     setTransferLoading(true);
 
-    // v31.0: Kripto transferi için cüzdan adresi kontrolü
-    if (transferMethod === 'crypto' && !cryptoWalletAddress.trim()) {
-      setTransferError('Kripto transferi için cüzdan adresi zorunludur.');
-      setTransferLoading(false);
-      return;
-    }
-
     try {
       const transferAmount = amount ? parseFloat(amount) : undefined;
 
@@ -89,19 +80,15 @@ export function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          method: transferMethod,
-          details: {
-            amount: transferAmount,
-            walletAddress: cryptoWalletAddress
-          }
+          amount: transferAmount
         })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setTransferSuccess(`${transferMethod === 'bank' ? 'Banka' : 'Kripto'} transferi başlatıldı! ID: ${data.transferId}`);
-        setCryptoWalletAddress('');
+        setTransferSuccess(`Banka transferi başlatıldı! ID: ${data.transferId}`);
+        setWalletAddress('');
         setAmount('');
         setTimeout(() => {
           loadDashboard();
@@ -193,57 +180,62 @@ export function AdminDashboard() {
         </div>
 
         {/* Manual Transfer Form */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Send className="w-5 h-5 text-blue-400" />
-              Manuel Para Çekme
-            </h2>
+        <div className="bg-slate-800 rounded-lg border border-slate-700 p-6">
+          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <Send className="w-5 h-5 text-blue-400" />
+            Manuel Banka Transferi
+          </h2>
 
-            <form onSubmit={handleTransfer} className="space-y-4">
-              {/* Transfer Metodu */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Transfer Yöntemi</label>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setTransferMethod('bank')} className={`flex-1 text-xs font-bold py-2 rounded-lg border ${transferMethod === 'bank' ? 'bg-green-600 border-green-500 text-white' : 'bg-slate-700 border-slate-600 text-slate-300'}`}>Banka (IBAN)</button>
-                  <button type="button" onClick={() => setTransferMethod('crypto')} className={`flex-1 text-xs font-bold py-2 rounded-lg border ${transferMethod === 'crypto' ? 'bg-orange-600 border-orange-500 text-white' : 'bg-slate-700 border-slate-600 text-slate-300'}`}>Kripto (USDT)</button>
-                </div>
-              </div>
-
-              {/* Kripto Cüzdan Adresi (koşullu) */}
-              {transferMethod === 'crypto' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Hedef Kripto Cüzdanı (Polygon)</label>
-                  <input
-                    type="text"
-                    value={cryptoWalletAddress}
-                    onChange={(e) => setCryptoWalletAddress(e.target.value)}
-                    placeholder="0x..."
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+          <form onSubmit={handleTransfer} className="space-y-4">
+            {/* Tutar */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Transfer Tutarı (USD)
+              </label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Boş bıraksa tüm havuz transfer olur"
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500"
+              />
+              {pool && !amount && (
+                <p className="text-xs text-blue-400 mt-1">
+                  Tüm havuz: ${pool.totalUSD.toFixed(2)} USD
+                </p>
               )}
+            </div>
 
-              {/* Tutar */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Transfer Tutarı (USD)</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Tüm havuz için boş bırakın"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                />
+            {/* Error */}
+            {transferError && (
+              <div className="bg-red-900/20 border border-red-700 text-red-400 p-3 rounded-lg text-sm">
+                {transferError}
               </div>
+            )}
 
-              {transferError && <div className="bg-red-900/20 border border-red-700 text-red-400 p-3 rounded-lg text-sm">{transferError}</div>}
-              {transferSuccess && <div className="bg-green-900/20 border border-green-700 text-green-400 p-3 rounded-lg text-sm">{transferSuccess}</div>}
+            {/* Success */}
+            {transferSuccess && (
+              <div className="bg-green-900/20 border border-green-700 text-green-400 p-3 rounded-lg text-sm">
+                {transferSuccess}
+              </div>
+            )}
 
-              <button type="submit" disabled={transferLoading || !pool} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
-                {transferLoading ? '⏳ Transfer ediliyor...' : '🚀 Transferi Başlat'}
-              </button>
-            </form>
-          </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={transferLoading || !pool}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              {transferLoading ? '⏳ Transfer ediliyor...' : '🚀 Banka Hesabına Gönder'}
+            </button>
+
+            {/* Info */}
+            <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-3">
+              <p className="text-xs text-blue-300">
+                ℹ️ Havuzda toplanan canlı para, .env dosyasında belirtilen QNB Finansbank IBAN adresine otomatik olarak gönderilecektir.
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>

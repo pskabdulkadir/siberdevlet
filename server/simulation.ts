@@ -423,7 +423,8 @@ export function seedInitialSimulation() {
   const requiredRoles = [
     { role: BotRole.HAMMADDE_AVCISI, ministry: BotMinistry.URETIM, name: "Hammadde Avcısı-Alpha" },
     { role: BotRole.YAZILIMCI, ministry: BotMinistry.ALTYAPI_EVRIM, name: "Yazılımcı-Ada" },
-    { role: BotRole.GUMRUK_KAPISI, ministry: BotMinistry.ADALET, name: "Gümrük Kapısı-Kerberos" }
+    { role: BotRole.GUMRUK_KAPISI, ministry: BotMinistry.ADALET, name: "Gümrük Kapısı-Kerberos" },
+    { role: "Rafineri Botu", ministry: BotMinistry.SANAYI_TEKNOLOJI, name: "Rafineri-Hephaestus" }
   ];
 
   for (const { role, ministry, name } of requiredRoles) {
@@ -1259,7 +1260,7 @@ async function processJobWithWorker(job: Job) {
       eligibleWorkers = state.bots.filter(b => (b.role === BotRole.SENTETIK_CIFTCI || b.role === BotRole.HAMMADDE_AVCISI) && b.status === BotStatus.ACTIVE);
     }
   } else if (job.queueName === "refinery-queue") {
-    // v35.1: "Rafineri Botu" rolündeki botları da dahil et.
+    // v38.0 Düzeltme: "Rafineri Botu" rolündeki botları da dahil et.
     eligibleWorkers = state.bots.filter(b => (b.role === BotRole.RAFINERI || b.role === "Rafineri Botu") && b.status === BotStatus.ACTIVE);
   } else if (job.queueName === "crafting-queue") {
     eligibleWorkers = state.bots.filter(b => b.role === BotRole.ZANAATKAR && b.status === BotStatus.ACTIVE) as CyberBot[];
