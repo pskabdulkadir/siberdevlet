@@ -1257,7 +1257,7 @@ async function handleQueueAndWorkerTasks() {
       });
     }
 
-    if (process.env.LIVE_MODE !== "true" && farmers.length > 0 && Math.random() > 0.5) {
+    if (farmers.length > 0 && Math.random() > 0.5) { // v33.0: LIVE_MODE kontrolü kaldırıldı, üretim her zaman aktif.
       const f = farmers[Math.floor(Math.random() * farmers.length)];
       productionQueue.add("Sentetik Algoritma Çiftçiliği", {
         seed: Math.floor(Math.random() * 99999),
