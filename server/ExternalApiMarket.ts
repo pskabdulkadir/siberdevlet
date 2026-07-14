@@ -61,8 +61,9 @@ export class ExternalApiMarket {
     this.lastMarketUpdate = state.activeTicks;
 
     // Alıcı botlar otomatik marketplace'i sorguluyor ve satın alıyor
-    // v28.0: Dış ticaret botları için otonom alım döngüsü yeniden aktif edildi.
-    this.simulateExternalPurchases();
+    // v35.0: Bu modüldeki otomatik alım döngüsü devre dışı bırakıldı.
+    // Tüm otomatik satışlar artık RealWorldGateway tarafından yönetiliyor.
+    // this.simulateExternalPurchases();
 
     // Marketplace durum
     if (this.marketData.length > 0 || this.salesHistory.length > 0) {
@@ -104,43 +105,9 @@ export class ExternalApiMarket {
    * v13.6: Bot satın alma işlemini gerçekleştir
    */
   private static processBotPurchase(buyer: BotBuyer, product: DataProduct) {
-    const amount = product.priceUSDT;
-
-    // Kurucu kâr havuzuna ekle (bot ödedi = kurucu kazandı)
-    AutomationManager.creatorProfitPool += amount;
-    this.totalExternalRevenue += amount;
-
-    // Satış kaydı
-    const sale: ExternalSale = {
-      id: `bot-sale-${Date.now()}`,
-      buyerId: buyer.id,
-      productId: product.id,
-      amount: amount,
-      currency: "USDT",
-      status: "completed",
-      timestamp: Date.now()
-    };
-    this.salesHistory.push(sale);
-
-    // Sistem log
-    addSystemLog(
-      `[🤖 BOT ALDI] ${buyer.name} otomatik olarak "${product.title}" satın aldı | ` +
-      `Ödeme: ${amount} USDT (Polygon) | Bot Cüzdan: ${buyer.walletAddress}`
-    );
-
-    // Ürünü pazardan sil (satıldı)
-    const idx = this.marketData.indexOf(product);
-    if (idx !== -1) {
-      this.marketData.splice(idx, 1);
-    }
-
-    // Kurucu kazancı eşiğini geçerse otomatik payout
-    if (AutomationManager.creatorProfitPool >= 50) {
-      addSystemLog(
-        `[💸 OTOBOT PAYOUT] Kurucu Havuzu: $${AutomationManager.creatorProfitPool.toFixed(2)} | ` +
-        `Otomatik Cüzdan Transfer Başlandı...`
-      );
-    }
+    // v35.0: Bu fonksiyon artık kullanılmıyor.
+    // Gelir kaydı ve ürün silme işlemleri RealWorldGateway'de merkezileştirildi.
+    return;
   }
 
   /**
