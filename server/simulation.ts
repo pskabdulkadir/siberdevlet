@@ -1299,9 +1299,10 @@ async function processJobWithWorker(job: Job) {
   // Match queue/job with specific Ministry & Bot roles
   if (job.queueName === "production-queue") {
     if (job.name.includes("Kazıma")) {
-      eligibleWorkers = state.bots.filter(b => b.role === BotRole.HAMMADDE_AVCISI && b.status === BotStatus.ACTIVE) as CyberBot[];
+      eligibleWorkers = state.bots.filter(b => b.role === BotRole.HAMMADDE_AVCISI && b.status === BotStatus.ACTIVE);
     } else {
-      eligibleWorkers = state.bots.filter(b => b.role === BotRole.SENTETIK_CIFTCI && b.status === BotStatus.ACTIVE) as CyberBot[];
+      // v34.0: Sentetik Çiftçi botu yoksa, Hammadde Avcıları bu işi de yapsın.
+      eligibleWorkers = state.bots.filter(b => (b.role === BotRole.SENTETIK_CIFTCI || b.role === BotRole.HAMMADDE_AVCISI) && b.status === BotStatus.ACTIVE);
     }
   } else if (job.queueName === "refinery-queue") {
     eligibleWorkers = state.bots.filter(b => b.role === BotRole.RAFINERI && b.status === BotStatus.ACTIVE) as CyberBot[];
