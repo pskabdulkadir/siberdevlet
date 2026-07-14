@@ -9,7 +9,7 @@ import { state, addSystemLog } from "./simulation.js";
 
 export class AutomatedMarketing {
   private static lastMarketingRun = 0;
-  private static readonly MARKETING_INTERVAL = 175; // 500 → 175: Pazarlama sıklığını 3x hızlat (her 5-6 saniyede)
+  private static readonly MARKETING_INTERVAL = 150; // 175 → 150: Pazarlama daha da hızlandırıldı.
 
   static async executeAutomatedMarketing(currentTick: number) {
     if (currentTick - this.lastMarketingRun < this.MARKETING_INTERVAL) {

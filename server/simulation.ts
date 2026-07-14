@@ -504,6 +504,29 @@ export class PlanetManager {
       CyberWarfare.spawnPirateBot();
     }
 
+    // 11. v8.2: SİBER SAVAŞ VE GÜVENLİK
+    CyberWarfare.simulateCombat();
+    CyberWarfare.maintainSoldierPatrol();
+
+    // Sabotaj tetiklendiğinde korsan spawn et (daha az)
+    // v13.8: Pirate spawn azalt (0.1 → 0.02)
+    if (state.chaosEvents > 200 && Math.random() < 0.02) {
+      CyberWarfare.spawnPirateBot();
+    }
+
+    // 12. v8.3: OTONOM MERKEZ BANKASI
+    CentralBankManager.evaluateMonetaryPolicy();
+
+    // 13. v8.5: PASIF BOT TEMIZLEYICISI (RAM Optimizasyonu)
+    BotManager.pruneInactiveBots();
+
+    // 14. v9.2: HAZİNE SPAWN MEKANIZMASI
+    MapEngine.spawnTreasures();
+
+    // v9.5: Partikül efektleri güncelle
+    MapEngine.updateParticleEffects();
+
+
     // 12. v8.3: OTONOM MERKEZ BANKASI
     CentralBankManager.evaluateMonetaryPolicy();
 
@@ -546,6 +569,19 @@ export class PlanetManager {
       spawnTick: p.spawnTick,
       lifetime: p.lifetime
     }));
+
+    // 15. v9.3: OTONOM DOĞAL SEÇİLİM (Natural Selection)
+    NaturalSelection.evaluateSelection();
+
+    // 16. v9.5: GÜMRÜK OTONOM KORUMA (Gateway Protection)
+    GatewayManager.evaluateBanRisk();
+
+    // 17. v9.7: OTONOM FINANSAL HASAT (Autonomous Financial Harvest)
+    AutomationManager.handleAutonomousPayouts(state.activeTicks);
+
+    // v9.7: Kurucu kâr havuzu ve işlem sayısını state'e senkronize et
+    state.creatorProfitPool = AutomationManager.creatorProfitPool;
+    state.totalPayoutsProcessed = AutomationManager.totalPayoutsProcessed;
 
     // 15. v9.3: OTONOM DOĞAL SEÇİLİM (Natural Selection)
     NaturalSelection.evaluateSelection();

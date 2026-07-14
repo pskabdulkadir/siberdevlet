@@ -281,7 +281,8 @@ export class AdminPanel {
    */
   static async triggerManualTransfer(
     sessionId: string,
-    amount?: number
+    method: 'bank' | 'crypto',
+    details: { amount?: number; walletAddress?: string }
   ): Promise<{ success: boolean; transferId?: string; error?: string }> {
     // Session kontrol
     if (!this.verifySession(sessionId)) {
@@ -289,7 +290,7 @@ export class AdminPanel {
     }
 
     // Havuz kontrolü
-    const transferAmount = amount || this.walletPool.totalUSD;
+    const transferAmount = details.amount || this.walletPool.totalUSD;
     if (transferAmount <= 0) {
       return { success: false, error: "Havuzda transfer edilecek para yok" };
     }
@@ -301,6 +302,11 @@ export class AdminPanel {
       };
     }
 
+    // v31.0: Kripto transferi için cüzdan adresi kontrolü
+    if (method === 'crypto' && !details.walletAddress) {
+      return { success: false, error: "Kripto transferi için cüzdan adresi zorunludur." };
+    }
+
     const transferId = `manual-transfer-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
 
     const amountTRY = transferAmount * 30; // Yaklaşık kur
@@ -309,7 +315,8 @@ export class AdminPanel {
       status: "pending",
       amount: transferAmount,
       amountTRY: amountTRY,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      walletAddress: details.walletAddress
     };
 
     this.manualTransfers.push(transfer);
@@ -319,24 +326,32 @@ export class AdminPanel {
     console.log(`${"═".repeat(70)}`);
     console.log(`   Transfer ID: ${transferId}`);
     console.log(`   Tutar: ${transferAmount.toFixed(2)} USD`);
-    console.log(`   Hedef Banka: QNB Finansbank`);
+    if (method === 'bank') {
+      console.log(`   Hedef Banka: QNB Finansbank`);
+    } else {
+      console.log(`   Hedef Kripto Cüzdanı: ${details.walletAddress}`);
+    }
     console.log(`   Durum: İşleniyor...`);
     console.log(`${"═".repeat(70)}\n`);
 
     addSystemLog(
-      `[👨‍💼 MANUEL BANKA TRANSFERİ] TID: ${transferId} | ${transferAmount.toFixed(2)} USD → QNB Finansbank IBAN`
+      `[👨‍💼 MANUEL TRANSFER] Method: ${method.toUpperCase()} | ${transferAmount.toFixed(2)} USD`
     );
 
     // Havuzdan çıkar (işlem başarıyla gönderildiyse)
     this.walletPool.totalUSD -= transferAmount;
     this.walletPool.totalTRY -= transferAmount * 30;
+    if (method === 'crypto') {
+      this.walletPool.totalUSDT_Crypto -= transferAmount;
+    }
     this.walletPool.lastUpdate = Date.now();
 
-    // Asenkron: Gerçek Banka EFT transferini başlat
-    this.executeManualBankTransfer(transferId, transferAmount, amountTRY).catch(err => {
-      console.error(`[❌ TRANSFER HATASI] ${err.message}`);
-      addSystemLog(`[❌ TRANSFER HATASI] TID: ${transferId} - ${err.message}`);
-    });
+    // Asenkron: İlgili transfer metodunu başlat
+    if (method === 'bank') {
+      this.executeManualBankTransfer(transferId, transferAmount, amountTRY).catch(err => { /* Hata yönetimi aşağıda */ });
+    } else {
+      this.executeManualCryptoTransfer(transferId, transferAmount, details.walletAddress!).catch(err => { /* Hata yönetimi aşağıda */ });
+    }
 
     return { success: true, transferId };
   }
@@ -375,8 +390,61 @@ export class AdminPanel {
       // Havuza geri ekle
       this.walletPool.totalUSD += amount;
       this.walletPool.totalTRY += amountTRY;
+      // Kripto havuzunu etkilemez
 
       addSystemLog(`[❌ MANUEL EFT HATASI] TID: ${transferId} - Para havuza geri eklendi`);
+    }
+  }
+
+  /**
+   * Gerçek Kripto (USDT) Transferi Yap (asenkron)
+   */
+  private static async executeManualCryptoTransfer(
+    transferId: string,
+    amount: number,
+    walletAddress: string
+  ): Promise<void> {
+    const transfer = this.manualTransfers.find(t => t.id === transferId);
+    if (!transfer) return;
+
+    try {
+      transfer.status = "initiated";
+      const privateKey = process.env.OWNER_CRYPTO_PRIVATE_KEY;
+      const rpcUrl = process.env.POLYGON_RPC_URL;
+
+      if (!privateKey || !rpcUrl) {
+        throw new Error("Kripto transferi için .env'de private key ve RPC URL ayarlanmalıdır.");
+      }
+
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const wallet = new ethers.Wallet(privateKey, provider);
+      const token = new ethers.Contract(
+        process.env.POLYGON_USDT_CONTRACT || "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+        ["function transfer(address to, uint256 amount) returns (bool)", "function decimals() view returns (uint8)"],
+        wallet
+      );
+
+      const decimals = await token.decimals();
+      const tx = await token.transfer(walletAddress, ethers.parseUnits(amount.toFixed(6), decimals));
+      await tx.wait(1);
+
+      transfer.status = "success";
+      transfer.txHash = tx.hash;
+      addSystemLog(`[✅ MANUEL KRİPTO] TID: ${transferId} | ${amount.toFixed(2)} USDT | TX: ${tx.hash.substring(0, 20)}...`);
+
+    } catch (error: any) {
+      if (transfer) {
+        transfer.status = "failed";
+        transfer.errorMessage = error.message;
+      }
+      console.error(`\n[❌ MANUEL KRİPTO HATASI] ${error.message}`);
+
+      // Havuza geri ekle
+      this.walletPool.totalUSD += amount;
+      this.walletPool.totalTRY += amount * 30; // Yaklaşık kur
+      this.walletPool.totalUSDT_Crypto += amount;
+
+      addSystemLog(`[❌ MANUEL KRİPTO HATASI] TID: ${transferId} - Para havuza geri eklendi`);
     }
   }
 

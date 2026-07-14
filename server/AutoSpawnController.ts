@@ -107,10 +107,10 @@ export class AutoSpawnController {
     const newBotName = `${shortRole}-${cityNames[cityIndex]}${Math.floor(sameRoleCount / 10)}`;
 
     // v8.5: Acil durum spawn bedeli kontrolü
-    let currentSpawnCost = this.SPAWN_COST;
+    let currentSpawnCost = AutoSpawnController.SPAWN_COST;
 
     // Hibe Havuzu < 50 ise spawn bedelini 80 GAIA'ya çıkart (Nüfus patlamasını durdur)
-    if (state.subsidyPool < 50) {
+    if (state.subsidyPool < 500) { // Limit artırıldı
       currentSpawnCost = 80; // Acil durum spawn bedeli
       addSystemLog(`[v8.5-Spawn-Control] 🚨 Hibe Havuzu kritik! Spawn Bedeli: ${this.SPAWN_COST} → ${currentSpawnCost} GAIA`);
     }
