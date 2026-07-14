@@ -1259,7 +1259,8 @@ async function processJobWithWorker(job: Job) {
       eligibleWorkers = state.bots.filter(b => (b.role === BotRole.SENTETIK_CIFTCI || b.role === BotRole.HAMMADDE_AVCISI) && b.status === BotStatus.ACTIVE);
     }
   } else if (job.queueName === "refinery-queue") {
-    eligibleWorkers = state.bots.filter(b => b.role === BotRole.RAFINERI && b.status === BotStatus.ACTIVE) as CyberBot[];
+    // v35.1: "Rafineri Botu" rolündeki botları da dahil et.
+    eligibleWorkers = state.bots.filter(b => (b.role === BotRole.RAFINERI || b.role === "Rafineri Botu") && b.status === BotStatus.ACTIVE);
   } else if (job.queueName === "crafting-queue") {
     eligibleWorkers = state.bots.filter(b => b.role === BotRole.ZANAATKAR && b.status === BotStatus.ACTIVE) as CyberBot[];
   } else if (job.queueName === "economy-queue") {
