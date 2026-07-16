@@ -117,17 +117,24 @@ router.get("/api/admin/wallet-pool", (req, res) => {
  * Manuel transfer tetikle - havuzdan cüzdana
  */
 router.post("/api/admin/transfer/manual", express.json(), async (req, res) => {
-  const { sessionId, walletAddress, amount } = req.body;
+  const { sessionId, method, amount, walletAddress } = req.body;
 
-  if (!sessionId || !walletAddress) {
+  if (!sessionId || !method) {
     return res.status(400).json({
       success: false,
-      error: "Session ID ve wallet address gerekli"
+      error: "Session ID ve transfer metodu (method: 'bank' veya 'crypto') gerekli"
     });
   }
 
-  const result = await AdminPanel.triggerManualTransfer(sessionId, walletAddress, amount);
+  if (method === 'crypto' && !walletAddress) {
+    return res.status(400).json({
+      success: false,
+      error: "Kripto transferi için 'walletAddress' gereklidir."
+    });
+  }
 
+  const result = await AdminPanel.triggerManualTransfer(sessionId, method, { amount, walletAddress });
+  
   if (!result.success) {
     return res.status(400).json(result);
   }

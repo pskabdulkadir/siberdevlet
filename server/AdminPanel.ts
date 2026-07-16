@@ -256,6 +256,7 @@ export class AdminPanel {
 
         console.log(`   ✅ DB'ye de kaydedildi`);
       } catch (dbError: any) {
+        // v37.0 Düzeltme: Render'da 'prisma migrate deploy' çalıştırılana kadar bu hata normaldir.
         console.log(`   ⚠️ DB kayıt hatası (hafızada veri korundu): ${dbError.message}`);
       }
 

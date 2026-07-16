@@ -1801,19 +1801,18 @@ app.post("/api/purchase-asset", express.json(), async (req, res) => {
   console.log(`   Blockchain: https://polygonscan.com/tx/${transactionHash}`);
   console.log(`${'═'.repeat(80)}\n`);
 
-  // Kurucu kâr havuzuna USDT tutarını ekle
-  AutomationManager.creatorProfitPool += usdtAmountNum;
+  // v39.0 DÜZELTME: GERÇEK PARA DOĞRUDAN CANLI HAVUZA EKLENİR.
+  // Gelen gerçek kripto ödemesini, çekilmeye hazır olan AdminPanel havuzuna aktar.
+  const amountTRY = usdtAmountNum * 30; // Yaklaşık kur
+  AdminPanel.addToWalletPool(
+    usdtAmountNum,
+    amountTRY,
+    `Gerçek Kripto Satış: ${asset.title}`,
+    transactionHash
+  ).catch(err => console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`));
 
-  // Otomatik payout tetikle (cüzdana geri gönder)
-  console.log(`\n📤 OTOMATIK PAYOUT TETİKLENİYOR: ${usdtAmountNum} USDT gönderiliyor...\n`);
-  PayoutManager.triggerCryptoPayout(usdtAmountNum).then(result => {
-    if (result.success) {
-      console.log(`✅ PARA BAŞARILI İLE GÖNDERİLDİ`);
-      addSystemLog(`[🟢 CANLI TRANSFER BAŞARILI] Kurucu hesabına ${usdtAmountNum} USDT aktarıldı. TX: ${result.txHash}`);
-    }
-  }).catch(err => {
-    console.error(`❌ Payout hatası: ${err.message}`);
-  });
+  // Otomatik payout kaldırıldı. Para havuzda birikir ve manuel çekim beklenir.
+  addSystemLog(`[💰 CANLI PARA] ${usdtAmountNum.toFixed(2)} USDT canlı para havuzuna eklendi.`);
 
   // Asset delivery - download token
   const downloadToken = `token-${crypto.randomBytes(16).toString('hex')}`;

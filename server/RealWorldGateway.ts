@@ -400,22 +400,26 @@ export class RealWorldGateway {
         `Otomatik Cüzdan Transfer Başlandı...`
       );
 
-      // v27.0: Kurumsal Bütçe'den harcama yapmayı DENE.
-      // ÖNEMLİ DÜZELTME: Bütçe yetersiz olsa bile, bu bir "dış satış" olduğu için
-      // paranın AdminPanel havuzuna eklenmesi gerekir. Bu, sıfır sermaye prensibini korur.
-      // Gelir her zaman dışarıdan geliyormuş gibi davranılmalıdır.
-      CorporateAccount.purchase(buyAmount); // Bütçeden düşmeyi dene, sonuç önemli değil.
-
-      // Parayı HER ZAMAN Admin Paneli havuzuna ekle.
-      const amountTRY = buyAmount * 30; // Yaklaşık kur
-      AdminPanel.addToWalletPool(
-        buyAmount,
-        amountTRY,
-        `Kurumsal Otobot Satış: ${product.title}`,
-        tx.id
-      ).catch(err => {
-        console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
-      });
+      // v38.0: GERÇEKÇİ PARA AKIŞI DÜZELTMESİ
+      // "Otobot Alıcı", dış dünyadaki müşterilerin harcamalarını simüle eder.
+      // Bu nedenle, harcama yalnızca Kurumsal Bütçe'de para varsa yapılmalıdır.
+      // Bu, paranın "yoktan var edilmediğini", dışarıdan gelen bir kaynaktan harcandığını garanti eder.
+      if (CorporateAccount.purchase(buyAmount)) {
+        // Harcama başarılı. Bu para artık "canlı" ve kurucu havuzuna aktarılabilir.
+        const amountTRY = buyAmount * 30; // Yaklaşık kur
+        AdminPanel.addToWalletPool(
+          buyAmount,
+          amountTRY,
+          `Kurumsal Otobot Satış: ${product.title}`,
+          tx.id
+        ).catch(err => {
+          console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+        });
+      } else {
+        // Kurumsal bütçe yetersiz. Satış gerçekleşemez ve havuza para eklenemez.
+        // Bu, sistemin sonsuz para üretmesini engeller.
+        addSystemLog(`[⚠️ OTO-SATIŞ] Kurumsal bütçe yetersiz. "${product.title}" satışı yapılamadı ve havuza para eklenmedi.`);
+      }
     }
 
     this.lastAutoBuyerTime = now;

@@ -71,10 +71,10 @@ export class AutomatedSalesAndPayout {
       return;
     }
 
-    // v22.0 CANLI MOD: Sahte alıcı döngüsü yerine RealWorldGateway'deki
-    // otomatik alıcı botunu tetikle. Bu, canlı para akışını sağlar.
-    // Bu fonksiyon, ürünleri kurumsal bütçeden satın alıp parayı AdminPanel havuzuna aktarır.
-    RealWorldGateway.triggerAutoExternalBuyer();
+    // v39.0: GERÇEK SATIŞ MODU
+    // Otomatik satış simülasyonu tamamen devre dışı bırakıldı. Sistem artık sadece
+    // dış dünyadan gelen gerçek alıcıların ödemelerini bekleyecek.
+    addSystemLog(`[ℹ️ SATIŞ] Pazardaki ürünler için gerçek alıcılar bekleniyor...`);
   }
 
   /**
