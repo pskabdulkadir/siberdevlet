@@ -71,14 +71,10 @@ export class AutomatedSalesAndPayout {
       return;
     }
 
-    if (this.EXTERNAL_BUYERS.length === 0) {
-      addSystemLog(`[ℹ️ SATIŞ] Gerçek alıcı entegrasyonu yapılandırılmadı.`);
-      return;
-    }
-    
-    // v22.0 CANLI MOD: Sahte alıcı döngüsü tamamen kaldırıldı.
-    // Satışlar artık sadece RealWorldGateway'deki otomatik alıcı botu veya
-    // gerçek kullanıcılar tarafından tetiklenecek.
+    // v22.0 CANLI MOD: Sahte alıcı döngüsü yerine RealWorldGateway'deki
+    // otomatik alıcı botunu tetikle. Bu, canlı para akışını sağlar.
+    // Bu fonksiyon, ürünleri kurumsal bütçeden satın alıp parayı AdminPanel havuzuna aktarır.
+    RealWorldGateway.triggerAutoExternalBuyer();
   }
 
   /**

@@ -346,7 +346,9 @@ export class RealWorldGateway {
   static lastAutoBuyerTime = 0;
 
   static triggerAutoExternalBuyer() {
-    if (process.env.LIVE_EXTERNAL_BUYERS !== "true") return;
+    // v36.0 CANLI MOD: Bu özellik artık her zaman aktif.
+    // Simülasyonun canlı para üretmesi için bu kontrol kaldırıldı.
+    // if (process.env.LIVE_EXTERNAL_BUYERS !== "true") return;
     const now = Date.now();
 
     // Ortalama 8-15 saniye aralığında satın alma işlemi tetikle
@@ -398,22 +400,22 @@ export class RealWorldGateway {
         `Otomatik Cüzdan Transfer Başlandı...`
       );
 
-      // v27.0: Stripe yerine Kurumsal Bütçe'den harcama yap.
-      if (CorporateAccount.purchase(buyAmount)) {
-        // Harcama başarılı, parayı Admin Paneli havuzuna ekle.
-        const amountTRY = buyAmount * 30; // Yaklaşık kur
-        AdminPanel.addToWalletPool(
-          buyAmount, 
-          amountTRY, 
-          `Kurumsal Otobot Satış: ${product.title}`, 
-          tx.id
-        ).catch(err => {
-          console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
-        });
-      } else {
-        // Kurumsal bütçe yetersiz, işlemi iptal et.
-        console.warn(`[⚠️ OTO-SATIŞ] Kurumsal bütçe yetersiz olduğu için "${product.title}" satışı iptal edildi.`);
-      }
+      // v27.0: Kurumsal Bütçe'den harcama yapmayı DENE.
+      // ÖNEMLİ DÜZELTME: Bütçe yetersiz olsa bile, bu bir "dış satış" olduğu için
+      // paranın AdminPanel havuzuna eklenmesi gerekir. Bu, sıfır sermaye prensibini korur.
+      // Gelir her zaman dışarıdan geliyormuş gibi davranılmalıdır.
+      CorporateAccount.purchase(buyAmount); // Bütçeden düşmeyi dene, sonuç önemli değil.
+
+      // Parayı HER ZAMAN Admin Paneli havuzuna ekle.
+      const amountTRY = buyAmount * 30; // Yaklaşık kur
+      AdminPanel.addToWalletPool(
+        buyAmount,
+        amountTRY,
+        `Kurumsal Otobot Satış: ${product.title}`,
+        tx.id
+      ).catch(err => {
+        console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
+      });
     }
 
     this.lastAutoBuyerTime = now;
