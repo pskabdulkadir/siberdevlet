@@ -97,7 +97,8 @@ export class MarketingManager {
    * Her 1000 TICK'te pazarlamacı botlar devreye giriyor
    */
   static executeMarketingCycle(currentTick: number) {
-    if (process.env.LIVE_MARKETING_READY !== "true") return;
+    // v41.3: Canlı pazarlama her zaman aktif. Gerçek müşteri çekmek için sürekli çalışır.
+    // if (process.env.LIVE_MARKETING_READY !== "true") return; // Bu kontrol kaldırıldı.
     if (currentTick - this.lastMarketingRun < this.MARKETING_INTERVAL) {
       return;
     }
@@ -111,6 +112,9 @@ export class MarketingManager {
 
   /**
    * v12.0: Pazarlamacı botu çalıştır
+   * v41.3: API istemcilerinin her döngüde başlatılmasını sağla.
+   * Bu, sunucu yeniden başlatıldığında veya token'lar dinamik olarak eklendiğinde
+   * pazarlama botlarının çalışmasını garanti eder.
    */
   private static runMarketingBot(bot: MarketingBot) {
     switch (bot.role) {

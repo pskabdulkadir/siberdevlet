@@ -584,6 +584,7 @@ export class PlanetManager {
     // v10.0: Dış pazaar verilerini state'e senkronize et
     state.externalMarketData = ExternalApiMarket.marketData.map(p => ({
       id: p.id,
+      // v41.0: Düzeltme - title ve diğer alanlar eksikti.
       title: p.title,
       type: p.type,
       content: p.content,
@@ -595,6 +596,8 @@ export class PlanetManager {
     state.externalSalesCount = ExternalApiMarket.salesHistory.length;
 
     // 19. v12.0: OTONOM PAZARLAMA (Autonomous Growth Hacking)
+    // v41.3: Pazarlama döngüsü ana tick'e entegre edildi.
+    // Bu, her simülasyon adımında pazarlama botlarının çalışmasını sağlar.
     MarketingManager.executeMarketingCycle(state.activeTicks);
 
     // v13.7: OTOMATIK SOSYAL MEDYA PAYLAŞIMI (Twitter, Reddit, GitHub, Medium, Discord, Telegram)
