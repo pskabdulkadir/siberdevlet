@@ -1204,24 +1204,28 @@ async function handleQueueAndWorkerTasks() {
   const waitingProdJobs = state.jobs.filter(j => j.queueName === "production-queue" && j.status === "waiting");
   if (waitingProdJobs.length === 0 && !shouldPauseProduction && totalAssets < 100) {
     const scrapers = state.bots.filter(b => b.role === BotRole.HAMMADDE_AVCISI && b.status === BotStatus.ACTIVE);
-    const farmers = state.bots.filter(b => b.role === BotRole.SENTETIK_CIFTCI && b.status === BotStatus.ACTIVE);
 
-    if (scrapers.length > 0 && Math.random() > 0.5) {
+    // v40.0: Pazarlama odaklı üretim. Sadece Hammadde Avcıları, çeşitli kaynaklardan veri çeker.
+    if (scrapers.length > 0) {
       const s = scrapers[Math.floor(Math.random() * scrapers.length)];
+      // Rastgele bir hedef seçerek daha çeşitli ürünler üretilmesini sağla.
+      const targets = ["Github", "WebAPI", "Twitter", "RSS"];
+      const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+
       productionQueue.add("Veri Kazıma (Scrape)", {
-        target: ["Github", "WebAPI", "Twitter"][Math.floor(Math.random() * 3)],
+        target: randomTarget,
         scrapedBy: s.name,
         botId: s.id
       });
-    }
 
-    if (farmers.length > 0 && Math.random() > 0.5) { // v33.0: LIVE_MODE kontrolü kaldırıldı, üretim her zaman aktif.
-      const f = farmers[Math.floor(Math.random() * farmers.length)];
-      productionQueue.add("Sentetik Algoritma Çiftçiliği", {
-        seed: Math.floor(Math.random() * 99999),
-        farmedBy: f.name,
-        botId: f.id
-      });
+      // Her üretim döngüsünde bir log atarak sistemin çalıştığını teyit et.
+      if (state.activeTicks % 20 === 0) {
+        addSystemLog(`[ÜRETİM] ${s.name} botu, ${randomTarget} kaynağından yeni veri üretimi için görevlendirildi.`);
+      }
+    } else {
+      if (state.activeTicks % 20 === 0) {
+        addSystemLog(`[ÜRETİM] Aktif Hammadde Avcısı botu bulunamadı. Üretim duraklatıldı.`);
+      }
     }
   }
 

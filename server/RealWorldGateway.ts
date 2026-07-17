@@ -344,82 +344,11 @@ export class RealWorldGateway {
   static lastAutoBuyerTime = 0;
 
   static triggerAutoExternalBuyer() {
-    // v36.0 CANLI MOD: Bu özellik artık her zaman aktif.
-    // Simülasyonun canlı para üretmesi için bu kontrol kaldırıldı.
-    // if (process.env.LIVE_EXTERNAL_BUYERS !== "true") return;
-    const now = Date.now();
-
-    // Ortalama 8-15 saniye aralığında satın alma işlemi tetikle
-    if (now - this.lastAutoBuyerTime < 8000) return;
-
-    // Ürün yoksa çıkış yap
-    if (this.marketplace.length === 0) return;
-
-    // Rastgele ürün seç
-    const product = this.marketplace[Math.floor(Math.random() * this.marketplace.length)];
-
-    // Rastgele fiyat (ürün fiyatı ±20%)
-    const variance = 1 + (Math.random() - 0.5) * 0.4;
-    const buyAmount = Math.round(product.price * variance * 100) / 100;
-
-    // Otomatik AI buyer oluştur
-    const autoEmail = `autobuy-${Date.now()}-${Math.random().toString(36).substring(7)}@aibotmarket.ai`;
-    const buyerId = this.registerBuyer(autoEmail, `AI Buyer #${this.buyers.size}`);
-
-    // Ödeme başlat
-    const txId = `auto-tx-${Date.now()}`;
-    const tx: Transaction = {
-      id: txId,
-      buyerId,
-      productId: product.id,
-      amount: buyAmount,
-      paymentMethod: "USDT_POLYGON", // v29.0: Otomatik alıcılar artık kripto ile ödeme yapar.
-      status: "pending",
-      createdAt: now,
-      transactionHash: `auto-tx-${Math.random().toString(36).substring(2, 15)}`
-    };
-
-    this.transactions.push(tx);
-
-    // Otomatik ödeme doğrula
-    tx.status = "verified";
-    tx.verifiedAt = now;
-
-    const buyer = this.buyers.get(buyerId);
-    if (buyer) {
-      buyer.totalPurchases++;
-      buyer.totalSpent += buyAmount;
-      product.purchaseCount++;
-      this.totalRealWorldRevenue += buyAmount;
-      this.totalRealTransactions++;
-
-      addSystemLog(
-        `[🤖 OTOBOT SATIN ALMA] AI Buyer "${product.title}" ürününü ${buyAmount} USDT'ye satın aldı. ` +
-        `Otomatik Cüzdan Transfer Başlandı...`
-      );
-
-      // v38.0: GERÇEKÇİ PARA AKIŞI DÜZELTMESİ
-      // "Otobot Alıcı", dış dünyadaki müşterilerin harcamalarını simüle eder.
-      // Bu nedenle, harcama yalnızca Kurumsal Bütçe'de para varsa yapılmalıdır.
-      // Bu, paranın "yoktan var edilmediğini", dışarıdan gelen bir kaynaktan harcandığını garanti eder.
-      if (CorporateAccount.purchase(buyAmount)) {
-        // Harcama başarılı. Bu para artık "canlı" ve kurucu havuzuna aktarılabilir.
-        const amountTRY = buyAmount * 30; // Yaklaşık kur
-        AdminPanel.addToWalletPool(
-          buyAmount,
-          amountTRY,
-          `Kurumsal Otobot Satış: ${product.title}`,
-          tx.id
-        ).catch(err => {
-          console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
-        });
-      } else {
-        // Kurumsal bütçe yetersiz. Satış gerçekleşemez ve havuza para eklenemez.
-        // Bu, sistemin sonsuz para üretmesini engeller.
-        addSystemLog(`[⚠️ OTO-SATIŞ] Kurumsal bütçe yetersiz. "${product.title}" satışı yapılamadı ve havuza para eklenmedi.`);
-      }
+    // v40.0: TAM CANLI MOD.
+    // Otomatik alıcı simülasyonu tamamen devre dışı bırakıldı.
+    // Sistem artık sadece dış dünyadan gelen gerçek alıcıların ödemelerini bekleyecek.
+    if (state.activeTicks % 50 === 0) { // Logların dolmasını engellemek için seyrek loglama
+      addSystemLog(`[🟢 CANLI MOD] Otomatik alıcı simülasyonu kapalı. Gerçek müşteri bekleniyor...`);
     }
-
-    this.lastAutoBuyerTime = now;
   }
 }

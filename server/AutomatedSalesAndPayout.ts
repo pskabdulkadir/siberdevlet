@@ -27,8 +27,6 @@ export class AutomatedSalesAndPayout {
   private static totalCycleSales = 0; // Döngüdeki satış sayısı
   private static pendingPayoutAmount = 0; // Çekilmeyi bekleyen tutar
 
-  private static readonly EXTERNAL_BUYERS: any[] = []; // v22.0 CANLI MOD: Sahte alıcılar temizlendi.
-
   // Yapılandırma - GERÇEK LIVE SETTINGS
   private static config: AutoSaleConfig = {
     enabled: true,
@@ -50,119 +48,9 @@ export class AutomatedSalesAndPayout {
    * v14.0: LIVE MODE - Her satış gerçek USDT
    */
   static executeAutoSalesCycle(currentTick: number) {
-    if (!this.config.enabled) return;
-
-    if (currentTick - this.lastSaleCheck < this.config.saleCheckInterval) {
-      return;
-    }
-    this.lastSaleCheck = currentTick;
-
-    // Satılmamış ürünleri bul
-    const unsoldAssets = state.assets.filter(
-      (asset) => asset.status === "available" || asset.status === "market"
-    );
-
-    if (unsoldAssets.length === 0) {
-      // Bu bir hata değil, normal bir durum. Loglamaya gerek yok.
-      addSystemLog(`[⚠️ SATIŞ] Satılacak ürün yok.`);
-      return;
-    }
-
-    // v39.0: GERÇEK SATIŞ MODU
-    // Otomatik satış simülasyonu tamamen devre dışı bırakıldı. Sistem artık sadece
-    // dış dünyadan gelen gerçek alıcıların ödemelerini bekleyecek.
-    addSystemLog(`[ℹ️ SATIŞ] Pazardaki ürünler için gerçek alıcılar bekleniyor...`);
-  }
-
-  /**
-   * GERÇEK LIVE SATIŞ - Her satış = Marketplace Order + Banka Transferi
-   * v18.0: Satış → Marketplace Order → IBAN talimatı
-   */
-  private static processRealSaleTransaction(
-    asset: any,
-    buyerData: typeof this.EXTERNAL_BUYERS[0]
-  ) {
-    try {
-      // GERÇEK FİYAT HESAPLA
-      const basePrice = Math.random() * 450 + 50; // $50 - $500
-      const priceUSDT = parseFloat(basePrice.toFixed(2));
-
-      // Alıcı bütçesi yeterli mi?
-      if (buyerData.budget < priceUSDT) {
-        return;
-      }
-
-      // İŞLEM KAYDISI
-      const txId = `real-sale-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-
-      // STATE GÜNCELLE
-      state.externalRevenue += priceUSDT;
-      state.externalSalesCount += 1;
-      this.totalCycleSales += 1;
-      this.pendingPayoutAmount += priceUSDT;
-      buyerData.budget -= priceUSDT;
-
-      // ÜRÜN DURUMUNU GÜNCELLE
-      asset.status = "sold";
-      asset.soldAt = Date.now();
-      asset.soldPrice = priceUSDT;
-
-      // v21.0: HAVUZA EKLE - Transfer YAPMA, admin manuel tetikleyecek
-      const amountTRY = priceUSDT * 30;
-      AdminPanel.addToWalletPool(priceUSDT, amountTRY, `Dış Satış: ${buyerData.company}`, txId).catch(err => {
-        console.error(`[❌ HAVUZ KAYIT HATASI] ${err.message}`);
-      });
-
-      // MARKETPLACE'DE ÜRÜNÜ BULA - Order oluşturma (opsiyonel)
-      const marketplaceProduct = OpenMarketplace.products.find(
-        p => p.title.includes(asset.title.split(":")[1]?.trim() || "") ||
-             p.title === asset.title
-      );
-
-      if (marketplaceProduct) {
-        // MARKETPLACE ORDER OLUŞTUR
-        OpenMarketplace.initiatePayment(
-          "",
-          marketplaceProduct.id,
-          buyerData.email,
-          buyerData.company
-        ).then(result => {
-          if (result.success && result.orderId) {
-            // Order'ı hemen tamamla (ödeme yapılmış kabul et)
-            OpenMarketplace.completeOrder(result.orderId);
-          }
-        }).catch(err => {
-          // Sessiz hata - order oluşturma başarısız bile olsa banka transferi logu yazıldı
-        });
-      }
-
-      console.log(
-        `\n✅ GERÇEK SATIŞ TAMAMLANDI`
-      );
-      console.log(
-        `   Ürün: "${asset.title}"`
-      );
-      console.log(
-        `   Fiyat: ${priceUSDT.toFixed(2)} USD`
-      );
-      console.log(
-        `   Alıcı: ${buyerData.company}`
-      );
-      console.log(
-        `   TX ID: ${txId}`
-      );
-      console.log(
-        `   Kalan Bütçe: ${buyerData.budget.toFixed(2)} USD\n`
-      );
-
-      addSystemLog(
-        `[🟢 GERÇEK SATIS] "${asset.title}" → ${priceUSDT.toFixed(2)} USD (${buyerData.company})`
-      );
-
-    } catch (error: any) {
-      console.error(`[SATIS HATASI] ${error.message}`);
-      addSystemLog(`[❌ SATIS HATASI] ${error.message}`);
-    }
+    // v40.0: Bu fonksiyon artık sadece bir yer tutucudur.
+    // Tüm satış mantığı RealWorldGateway ve OpenMarketplace üzerinden
+    // gerçek kullanıcı etkileşimleriyle yönetilmektedir.
   }
 
 
@@ -183,7 +71,6 @@ export class AutomatedSalesAndPayout {
         0,
         this.config.payoutThreshold - state.externalRevenue
       ),
-      externalBuyers: this.EXTERNAL_BUYERS.length,
       averagePrice: state.externalSalesCount > 0
         ? (state.externalRevenue / state.externalSalesCount).toFixed(2)
         : 0

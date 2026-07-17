@@ -111,52 +111,6 @@ export class ExternalApiMarket {
   }
 
   /**
-   * v13.1: Dış alıcıdan ödeme al ve otomatik payout tetikle
-   */
-  private static processExternalPayment(buyer: ExternalBuyer, product: DataProduct) {
-    const paymentUSDT = product.priceUSDT;
-
-    // USDT'yi kurucu kâr havuzuna ekle
-    AutomationManager.creatorProfitPool += paymentUSDT;
-    this.totalExternalRevenue += paymentUSDT;
-
-    // Satış kaydı
-    const sale: ExternalSale = {
-      id: `external-sale-${Date.now()}`,
-      buyerId: buyer.id,
-      productId: product.id,
-      amount: paymentUSDT,
-      currency: "USDT",
-      status: "completed",
-      timestamp: Date.now()
-    };
-    this.salesHistory.push(sale);
-
-    // Sistem logu
-    addSystemLog(
-      `[v13.1-DIŞ-PAZARLAMA] 💼 OTONOM SATIŞ: ${buyer.name} tarafından ` +
-      `"${product.title}" $${paymentUSDT.toFixed(2)} karşılığında satın alındı. ` +
-      `→ Kurucu Kâr Havuzuna Eklendi`
-    );
-
-    // Ürünü pazardan sil (satıldı)
-    const idx = this.marketData.indexOf(product);
-    if (idx !== -1) {
-      this.marketData.splice(idx, 1);
-    }
-
-    // v13.1: Eğer havuz eşiği geçti, payout'u tetikle (agresif)
-    if (AutomationManager.creatorProfitPool >= 50) {
-      addSystemLog(
-        `[v13.1-OTOMATİK-PAYOUT] 🚀 Kurucu Havuzu $${AutomationManager.creatorProfitPool.toFixed(2)} Ulaştı. ` +
-        `Otomatik Banka + Kripto Transfer Başlatılıyor...`
-      );
-      // Fire-and-forget: payout'u tetikle (hemen, bekleme)
-      // Bu AutomationManager.handleAutonomousPayouts ile de tetiklenir
-    }
-  }
-
-  /**
    * v10.0: Botlardan gelen yeni veriyi dış pazara ekle
    */
   static addProductToMarketplace(
@@ -202,8 +156,7 @@ export class ExternalApiMarket {
       `Toplam Satış İşlemi: ${this.salesHistory.length}\n` +
       `Toplam İhracat Geliri: ${this.totalExternalRevenue.toFixed(2)} USDT\n` +
       `Ortalama Satış Fiyatı: ${avgPrice.toFixed(2)} USDT\n` +
-      `Pazarda Listelenen Ürün: ${this.marketData.length}\n` +
-      `Bağlı Alıcı: ${this.externalBuyers.length} (Güvenilir Ortaklar)`
+      `Pazarda Listelenen Ürün: ${this.marketData.length}`
     );
   }
 
