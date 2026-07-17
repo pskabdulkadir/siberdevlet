@@ -1,7 +1,6 @@
 import { state, addSystemLog } from "./simulation.js";
 import { BankTransferNode } from "./BankTransferNode.js";
 import { AdminPanel } from "./AdminPanel.js";
-import { addSystemLog } from "./simulation.js";
 import crypto from "crypto";
 
 /**

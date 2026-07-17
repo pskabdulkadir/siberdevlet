@@ -2,9 +2,6 @@ import { state, addSystemLog } from "./simulation.js";
 import { PayoutManager } from "./PayoutManager.js";
 import { RealWorldGateway } from "./RealWorldGateway.js";
 import { OpenMarketplace } from "./OpenMarketplace.js";
-import { BankTransferNode } from "./BankTransferNode.js";
-import { AdminPanel } from "./AdminPanel.js";
-import { addSystemLog, state } from "./simulation.js";
 import crypto from "crypto";
 
 /**

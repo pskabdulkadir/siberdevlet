@@ -1050,6 +1050,9 @@ export async function runSimulationTick() {
   // v14.0: Otomatik Dış Dünya Satın Alma (Bot satışını tamamla → canlı para akışı)
   // AÇIK: Polygon sistemi kaldırıldı, simülasyon para akışı aktif
   // Otomatik alıcı yalnızca gerçek ödeme sağlayıcısı ve kayıtlı alıcı bulunduğunda çalışır.
+
+  // v39.1: Otomatik dış alıcıyı her tick'te tetikle
+  RealWorldGateway.triggerAutoExternalBuyer();
 }
 
 // 2. Infrastructure tasks (Mimar Bot CPU/RAM quarantine action)

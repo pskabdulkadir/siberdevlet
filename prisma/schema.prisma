@@ -137,8 +137,8 @@ model BackupLog {
 model WalletPool {
   id                String    @id @default("singleton")
   totalUSD          Float     @default(0)
-  totalTRY          Float     @default(0)
-  totalUSDT_Crypto  Float     @default(0) // v29.0: Kripto gelirleri için ayrı havuz
+  totalTRY          Float     @default(0) // v29.0: Kripto gelirleri için ayrı havuz
+  totalUSDT         Float     @default(0)
   totalTransactions Int       @default(0)
   lastUpdate        BigInt    @default(0)
 

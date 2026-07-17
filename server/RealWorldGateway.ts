@@ -2,8 +2,6 @@ import { state, addSystemLog } from "./simulation.js";
 import { ExternalApiMarket } from "./ExternalApiMarket.js";
 import { BankTransferNode } from "./BankTransferNode.js";
 import { AdminPanel } from "./AdminPanel.js";
-import { AdminPanel } from "./AdminPanel.js";
-import { addSystemLog } from "./simulation.js";
 import crypto from "crypto";
 import { PolygonValidator } from "./PolygonValidator.js";
 
@@ -21,7 +19,7 @@ import { PolygonValidator } from "./PolygonValidator.js";
  * Bu, Stripe gibi harici bir ödeme sağlayıcısına olan ihtiyacı ortadan kaldırır.
  */
 class CorporateAccount {
-    static budget = parseFloat(process.env.CORPORATE_BUDGET_USD || "5000.0"); // Başlangıç bütçesi (USD)
+    static budget = parseFloat(process.env.CORPORATE_BUDGET_USD || "50000.0"); // Başlangıç bütçesi (USD) - Artırıldı
     static totalSpent = 0;
 
     static purchase(amount: number): boolean {
